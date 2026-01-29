@@ -1,0 +1,182 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+/* HUD sidebar */
+.hud {
+  width: 260px;
+  min-width: 260px;
+  background: #16162a;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  border-right: 1px solid #2a2a4e;
+}
+
+.hud h2 {
+  font-size: 1.3rem;
+  margin-bottom: 0.25rem;
+}
+
+.hud h3 {
+  font-size: 0.95rem;
+  color: #aaa;
+  margin-bottom: 0.25rem;
+}
+
+.hud-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.currency {
+  font-size: 1.2rem;
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.inventory {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.9rem;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+button {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #444;
+  background: #2a2a4e;
+  color: #eee;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+
+button:hover:not(:disabled) {
+  background: #3a3a6e;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.placement-info {
+  font-size: 0.8rem;
+  color: #aaa;
+  padding: 0.4rem;
+  background: #222244;
+  border-radius: 4px;
+}
+
+.demolish-btn {
+  background: #553322;
+  border-color: #774433;
+}
+
+.demolish-btn:hover:not(:disabled) {
+  background: #774433;
+}
+
+.cancel-btn {
+  margin-top: 0.3rem;
+  background: #553333;
+  border-color: #774444;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.cancel-btn:hover {
+  background: #774444;
+}
+
+.autoplay-btn {
+  background: #224466;
+  border-color: #446688;
+  margin-top: auto;
+}
+
+.autoplay-btn:hover:not(:disabled) {
+  background: #336699;
+}
+
+.ai-mode-btn {
+  background: #333355;
+  border-color: #555577;
+}
+
+.ai-mode-btn:hover {
+  background: #444466;
+}
+
+.ai-mode-btn.active {
+  background: #226622;
+  border-color: #44aa44;
+  color: #88ff88;
+}
+
+.ai-mode-btn.active:hover {
+  background: #338833;
+}
+
+.reset-btn {
+  background: #442222;
+  border-color: #664444;
+}
+
+.reset-btn:hover {
+  background: #664444;
+}
+
+.error-msg {
+  color: #ff6b6b;
+  font-size: 0.85rem;
+  padding: 0.4rem;
+  background: #331a1a;
+  border-radius: 4px;
+  border: 1px solid #553333;
+}
+
+.help-text {
+  font-size: 0.75rem;
+  color: #888;
+  line-height: 1.4;
+}
+
+/* Canvas area */
+.canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
