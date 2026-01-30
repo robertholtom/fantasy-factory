@@ -51,6 +51,36 @@ const ICONS: Record<string, string> = {
       <circle cx="22" cy="11" r="2" fill="#ffd700"/>
     </svg>
   `)}`,
+  warehouse: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect x="2" y="2" width="28" height="28" rx="4" fill="#2a2a3a"/>
+      <path d="M4 12 L16 4 L28 12 Z" fill="#505070"/>
+      <path d="M5 12 L5 26 L27 26 L27 12 Z" fill="#404060"/>
+      <rect x="7" y="14" width="5" height="6" fill="#303050"/>
+      <rect x="13" y="14" width="6" height="12" fill="#252540"/>
+      <rect x="20" y="14" width="5" height="6" fill="#303050"/>
+      <rect x="7" y="21" width="5" height="5" fill="#303050"/>
+      <rect x="20" y="21" width="5" height="5" fill="#303050"/>
+      <rect x="8" y="15" width="3" height="2" fill="#606080"/>
+      <rect x="21" y="15" width="3" height="2" fill="#606080"/>
+      <rect x="8" y="22" width="3" height="2" fill="#606080"/>
+      <rect x="21" y="22" width="3" height="2" fill="#606080"/>
+    </svg>
+  `)}`,
+  geologist: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect x="2" y="2" width="28" height="28" rx="4" fill="#2a3a2a"/>
+      <path d="M6 24 L6 14 L12 10 L20 10 L26 14 L26 24 Z" fill="#3a4a3a"/>
+      <rect x="10" y="14" width="12" height="10" fill="#2a3a2a"/>
+      <circle cx="16" cy="8" r="4" fill="#ffdd44"/>
+      <path d="M14 8 L18 8 L17 12 L15 12 Z" fill="#ffaa00"/>
+      <circle cx="10" cy="20" r="2" fill="#e07020"/>
+      <circle cx="16" cy="18" r="2" fill="#40b0b0"/>
+      <circle cx="22" cy="20" r="2" fill="#e07020"/>
+      <rect x="14" y="22" width="4" height="2" fill="#654321"/>
+      <path d="M8 26 L24 26 L22 24 L10 24 Z" fill="#4a5a4a"/>
+    </svg>
+  `)}`,
   ore_iron: `data:image/svg+xml,${encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
       <rect x="1" y="1" width="30" height="30" rx="3" fill="#3d2817"/>
@@ -248,6 +278,8 @@ const COLORS: Record<string, string> = {
   smelter: "#d04040",
   forger: "#40b040",
   shop: "#d0a030",
+  warehouse: "#6060a0",
+  geologist: "#40a040",
   progressBg: "#333",
   progressFill: "#eee",
   ghost: "rgba(255, 255, 255, 0.3)",
@@ -516,14 +548,51 @@ function drawBuilding(
     iconKey = building.type;
   }
 
-  // Draw icon
+  // Check if under construction
+  const underConstruction = (building.constructionProgress ?? 1) < 1;
+
+  // Draw icon (dimmed if under construction)
   const img = iconImages[iconKey];
   if (img && img.complete) {
+    if (underConstruction) {
+      ctx.globalAlpha = 0.4;
+    }
     ctx.drawImage(img, x, y, size, size);
+    ctx.globalAlpha = 1;
   } else {
     // Fallback to colored square if image not loaded
     ctx.fillStyle = COLORS[building.type];
+    if (underConstruction) {
+      ctx.globalAlpha = 0.4;
+    }
     ctx.fillRect(x, y, size, size);
+    ctx.globalAlpha = 1;
+  }
+
+  // Construction scaffolding effect
+  if (underConstruction) {
+    // Draw scaffold lines
+    ctx.strokeStyle = "#f0a030";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
+    ctx.setLineDash([]);
+
+    // Construction progress bar (yellow/orange)
+    const barHeight = 6;
+    const barY = y + size / 2 - barHeight / 2;
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(x + 4, barY - 1, size - 8, barHeight + 2);
+    ctx.fillStyle = "#f0a030";
+    ctx.fillRect(x + 5, barY, (size - 10) * (building.constructionProgress ?? 0), barHeight);
+
+    // "Building..." text
+    ctx.fillStyle = "#fff";
+    ctx.font = `bold ${Math.floor(cellSize * 0.2)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText("Building", x + size / 2, y + size / 2 + barHeight);
+    return; // Skip other overlays while under construction
   }
 
   // Recipe indicator for forgers (small badge in corner)

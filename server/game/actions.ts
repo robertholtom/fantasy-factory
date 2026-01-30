@@ -6,6 +6,7 @@ import {
   BELT_COST,
   GameState,
   Inventory,
+  GEOLOGIST_MAX_COUNT,
 } from "../../shared/types.js";
 import { getState, setState, createInitialState } from "./state.js";
 
@@ -48,12 +49,20 @@ export function placeBuilding(
     }
   }
 
+  if (type === "geologist") {
+    const existingGeologists = state.buildings.filter(b => b.type === "geologist").length;
+    if (existingGeologists >= GEOLOGIST_MAX_COUNT) {
+      return { state, error: "Only one geologist building allowed" };
+    }
+  }
+
   state.currency -= cost;
   state.buildings.push({
     id: `building-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     type,
     position,
     progress: 0,
+    constructionProgress: 0,
     storage: emptyInventory(),
     recipe: "dagger",
     npcQueue: [],
@@ -224,6 +233,7 @@ export function autoPlay(): { state: GameState; error?: string } {
       type,
       position: pos,
       progress: 0,
+      constructionProgress: 0,
       storage: emptyInventory(),
       recipe: recipe || "dagger",
       npcQueue: [],

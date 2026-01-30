@@ -3,7 +3,7 @@ export interface Position {
   y: number;
 }
 
-export type BuildingType = "miner" | "smelter" | "forger" | "shop";
+export type BuildingType = "miner" | "smelter" | "forger" | "shop" | "warehouse" | "geologist";
 
 export type OreType = "iron" | "copper";
 
@@ -25,11 +25,22 @@ export interface Building {
   id: string;
   type: BuildingType;
   position: Position;
-  progress: number; // 0 → 1
+  progress: number; // 0 → 1 (production progress)
+  constructionProgress: number; // 0 → 1 (1 = complete)
   storage: Inventory;
   recipe: ForgerRecipe; // only used by forgers
   npcQueue: Npc[]; // only used by shops
 }
+
+// Construction time in ticks per building type
+export const CONSTRUCTION_TICKS: Record<BuildingType, number> = {
+  miner: 3,
+  smelter: 5,
+  forger: 6,
+  shop: 8,
+  warehouse: 10,
+  geologist: 12,
+};
 
 export interface BeltItem {
   itemType: ItemType;
@@ -84,7 +95,18 @@ export const BUILDING_COSTS: Record<BuildingType, number> = {
   smelter: 25,
   forger: 50,
   shop: 75,
+  warehouse: 100,
+  geologist: 200,
 };
+
+// Geologist building settings
+export const GEOLOGIST_UPKEEP = 5; // Cost per tick to operate
+export const GEOLOGIST_DISCOVERY_TICKS = 15; // Ticks between discoveries
+export const GEOLOGIST_MAX_COUNT = 1; // Only one allowed
+
+// Warehouse wholesale settings
+export const WHOLESALE_THRESHOLD = 10; // Minimum items to trigger sale
+export const WHOLESALE_MULTIPLIER = 0.5; // 50% of base price
 
 export const BELT_COST = 5;
 

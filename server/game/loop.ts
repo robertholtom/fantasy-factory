@@ -24,6 +24,11 @@ import {
   BUILDING_COSTS,
   BELT_COST,
   getBeltTravelTime,
+  WHOLESALE_THRESHOLD,
+  WHOLESALE_MULTIPLIER,
+  CONSTRUCTION_TICKS,
+  GEOLOGIST_UPKEEP,
+  GEOLOGIST_DISCOVERY_TICKS,
 } from "../../shared/types.js";
 import { getState } from "./state.js";
 
@@ -37,9 +42,21 @@ function tick(): void {
   const state = getState();
   state.tick++;
 
-  // 1. Production: buildings produce into their own storage
+  // 0. Construction: advance construction progress for incomplete buildings
+  for (const building of state.buildings) {
+    if (building.constructionProgress < 1) {
+      const ticksNeeded = CONSTRUCTION_TICKS[building.type];
+      building.constructionProgress += 1 / ticksNeeded;
+      if (building.constructionProgress > 1) building.constructionProgress = 1;
+    }
+  }
+
+  // 1. Production: buildings produce into their own storage (only if construction complete)
   const EPSILON = 1e-9;
   for (const building of state.buildings) {
+    // Skip buildings under construction
+    if (building.constructionProgress < 1) continue;
+
     if (building.type === "miner") {
       const oreNode = state.oreNodes.find(
         (n) => n.position.x === building.position.x && n.position.y === building.position.y
@@ -89,6 +106,8 @@ function tick(): void {
     const src = findBuildingAt(state.buildings, belt.from.x, belt.from.y);
     const dst = findBuildingAt(state.buildings, belt.to.x, belt.to.y);
     if (!src || !dst) continue;
+    // Skip if either building is under construction
+    if (src.constructionProgress < 1 || dst.constructionProgress < 1) continue;
 
     const travelTime = getBeltTravelTime(belt.from, belt.to);
     const progressPerTick = 1 / travelTime;
@@ -151,7 +170,65 @@ function tick(): void {
     });
   }
 
-  // 4. AI expansion (if enabled)
+  // 4. Warehouse wholesale processing
+  for (const building of state.buildings) {
+    if (building.type !== "warehouse") continue;
+
+    // Check each finished good type
+    for (const item of FINISHED_GOODS) {
+      const count = building.storage[item];
+      if (count >= WHOLESALE_THRESHOLD) {
+        // Sell all items at wholesale price
+        const basePrice = SELL_PRICES[item];
+        const wholesalePrice = Math.floor(basePrice * WHOLESALE_MULTIPLIER);
+        state.currency += wholesalePrice * count;
+        building.storage[item] = 0;
+      }
+    }
+  }
+
+  // 5. Geologist ore discovery
+  for (const building of state.buildings) {
+    if (building.type !== "geologist") continue;
+    if (building.constructionProgress < 1) continue; // Not yet built
+
+    // Deduct upkeep if player can afford it
+    if (state.currency >= GEOLOGIST_UPKEEP) {
+      state.currency -= GEOLOGIST_UPKEEP;
+
+      // Progress towards discovering a new node
+      building.progress += 1 / GEOLOGIST_DISCOVERY_TICKS;
+
+      if (building.progress >= 1) {
+        building.progress = 0;
+
+        // Find empty position for new ore node
+        const occupiedPositions = new Set<string>();
+        state.oreNodes.forEach(n => occupiedPositions.add(`${n.position.x},${n.position.y}`));
+        state.buildings.forEach(b => occupiedPositions.add(`${b.position.x},${b.position.y}`));
+
+        // Try to find an empty spot
+        let attempts = 0;
+        while (attempts < 100) {
+          const x = Math.floor(Math.random() * state.mapWidth);
+          const y = Math.floor(Math.random() * state.mapHeight);
+          const key = `${x},${y}`;
+          if (!occupiedPositions.has(key)) {
+            const oreType = Math.random() < 0.5 ? "iron" : "copper";
+            state.oreNodes.push({
+              id: `ore-discovered-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              position: { x, y },
+              type: oreType,
+            });
+            break;
+          }
+          attempts++;
+        }
+      }
+    }
+  }
+
+  // 6. AI expansion (if enabled)
   aiExpand(state);
 }
 
@@ -169,8 +246,8 @@ function getTransferableItem(src: Building, dst: Building): ItemType | null {
     return null;
   }
 
-  if (dst.type === "shop") {
-    // Shops accept any finished good
+  if (dst.type === "shop" || dst.type === "warehouse") {
+    // Shops and warehouses accept any finished good
     for (const item of FINISHED_GOODS) {
       if (src.storage[item] > 0) return item;
     }
@@ -374,6 +451,7 @@ function aiExpand(state: GameState): void {
       type,
       position: pos,
       progress: 0,
+      constructionProgress: 0,
       storage: emptyInventory(),
       recipe: recipe || "dagger",
       npcQueue: [],
@@ -404,6 +482,8 @@ function aiExpand(state: GameState): void {
   const smelters = state.buildings.filter(b => b.type === "smelter");
   const forgers = state.buildings.filter(b => b.type === "forger");
   const shops = state.buildings.filter(b => b.type === "shop");
+  const warehouses = state.buildings.filter(b => b.type === "warehouse");
+  const geologists = state.buildings.filter(b => b.type === "geologist");
 
   // Find ore nodes without miners
   const minedPositions = new Set(miners.map(m => posKey(m.position)));
@@ -534,32 +614,67 @@ function aiExpand(state: GameState): void {
     }
   }
 
-  // Priority 4: Connect unconnected forgers to shop
-  if (shops.length > 0) {
-    const shop = shops[0];
+  // Priority 4: Connect unconnected forgers to shop or warehouse
+  if (shops.length > 0 || warehouses.length > 0) {
+    const salesBuilding = shops[0] || warehouses[0];
     for (const forger of forgers) {
-      const hasBeltToShop = state.belts.some(
+      const hasBeltToSales = state.belts.some(
         b => b.from.x === forger.position.x && b.from.y === forger.position.y &&
-             b.to.x === shop.position.x && b.to.y === shop.position.y
+             (shops.some(s => b.to.x === s.position.x && b.to.y === s.position.y) ||
+              warehouses.some(w => b.to.x === w.position.x && b.to.y === w.position.y))
       );
-      if (!hasBeltToShop) {
+      if (!hasBeltToSales) {
         if (state.currency >= BELT_COST) {
-          placeBelt(forger.position, shop.position);
+          placeBelt(forger.position, salesBuilding.position);
           return;
         }
       }
     }
   }
 
-  // Priority 5: Build new production chains for any unmined ore (expand capacity)
-  if (shops.length > 0 && unmined.length > 0) {
+  // Priority 5: Build warehouse when production exceeds shop capacity
+  if (shops.length > 0 && warehouses.length === 0 && forgers.length >= 2) {
+    // Check if production is backing up (forgers have items in storage)
+    let backlogCount = 0;
+    for (const forger of forgers) {
+      for (const item of FINISHED_GOODS) {
+        backlogCount += forger.storage[item];
+      }
+    }
+
+    // Check if shop queue is often full
+    const shop = shops[0];
+    const queueFull = shop.npcQueue.length >= 3;
+
+    // Build warehouse if significant backlog or queue pressure
+    if (backlogCount >= 5 || (queueFull && backlogCount >= 2)) {
+      const cost = BUILDING_COSTS.warehouse + BELT_COST * forgers.length;
+      if (state.currency >= cost) {
+        // Place warehouse near the shop
+        const warehousePos = findEmptyNear(shop.position, reserved);
+        if (warehousePos) {
+          if (placeBuilding("warehouse", warehousePos)) {
+            // Connect all forgers to warehouse
+            for (const forger of forgers) {
+              placeBelt(forger.position, warehousePos);
+            }
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  // Priority 6: Build new production chains for any unmined ore (expand capacity)
+  const salesBuildings = [...shops, ...warehouses];
+  if (salesBuildings.length > 0 && unmined.length > 0) {
     const fullChainCost = BUILDING_COSTS.miner + BUILDING_COSTS.smelter + BUILDING_COSTS.forger + BELT_COST * 3;
     if (state.currency >= fullChainCost) {
-      // Pick closest unmined ore to shop for efficiency
-      const shop = shops[0];
+      // Pick closest unmined ore to any sales building for efficiency
+      const salesBuilding = salesBuildings[0];
       const oreByDistance = unmined.map(n => ({
         node: n,
-        dist: Math.abs(n.position.x - shop.position.x) + Math.abs(n.position.y - shop.position.y)
+        dist: Math.abs(n.position.x - salesBuilding.position.x) + Math.abs(n.position.y - salesBuilding.position.y)
       })).sort((a, b) => a.dist - b.dist);
 
       for (const { node } of oreByDistance) {
@@ -579,12 +694,28 @@ function aiExpand(state: GameState): void {
             placeBuilding("forger", forgerPos, recipe);
             placeBelt(minerPos, smelterPos);
             placeBelt(smelterPos, forgerPos);
-            placeBelt(forgerPos, shop.position);
+            placeBelt(forgerPos, salesBuilding.position);
             return;
           }
         }
         // Clean up reserved if we couldn't place
         reserved.delete(posKey(minerPos));
+      }
+    }
+  }
+
+  // Priority 7: Build geologist when established and few unmined nodes left
+  if (geologists.length === 0 && shops.length > 0 && forgers.length >= 2) {
+    // Build geologist when running low on unmined nodes or have good income
+    const shouldBuildGeologist = unmined.length <= 5 || (state.currency >= 500 && unmined.length <= 10);
+
+    if (shouldBuildGeologist && state.currency >= BUILDING_COSTS.geologist) {
+      // Place near the shop
+      const shop = shops[0];
+      const geoPos = findEmptyNear(shop.position, reserved);
+      if (geoPos) {
+        placeBuilding("geologist", geoPos);
+        return;
       }
     }
   }

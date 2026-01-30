@@ -7,8 +7,8 @@ function generateOreNodes(): OreNode[] {
   const nodes: OreNode[] = [];
   const positions = new Set<string>();
 
-  // Place 15-20 ore nodes randomly
-  const count = 15 + Math.floor(Math.random() * 6);
+  // Place 25-35 ore nodes randomly
+  const count = 25 + Math.floor(Math.random() * 11);
   while (nodes.length < count) {
     const x = Math.floor(Math.random() * MAP_WIDTH);
     const y = Math.floor(Math.random() * MAP_HEIGHT);
@@ -25,7 +25,7 @@ function generateOreNodes(): OreNode[] {
 export function createInitialState(): GameState {
   return {
     tick: 0,
-    currency: 350,
+    currency: 400,
     inventory: {
       iron_ore: 0,
       iron_bar: 0,

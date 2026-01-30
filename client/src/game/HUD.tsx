@@ -1,4 +1,4 @@
-import { GameState, BuildingType, BUILDING_COSTS, BELT_COST } from "../../../shared/types";
+import { GameState, BuildingType, BUILDING_COSTS, BELT_COST, GEOLOGIST_MAX_COUNT, GEOLOGIST_UPKEEP } from "../../../shared/types";
 import { ITEM_ICONS } from "./icons";
 import { PlacementMode } from "./GameCanvas";
 
@@ -91,6 +91,23 @@ export default function HUD({
             disabled={currency < BUILDING_COSTS.shop || inPlacement}
           >
             Shop ${BUILDING_COSTS.shop}
+          </button>
+          <button
+            onClick={() => onBuy("warehouse")}
+            disabled={currency < BUILDING_COSTS.warehouse || inPlacement}
+          >
+            Warehouse ${BUILDING_COSTS.warehouse}
+          </button>
+          <button
+            onClick={() => onBuy("geologist")}
+            disabled={
+              currency < BUILDING_COSTS.geologist ||
+              inPlacement ||
+              state.buildings.filter(b => b.type === "geologist").length >= GEOLOGIST_MAX_COUNT
+            }
+            title={`Finds new ore nodes. Upkeep: $${GEOLOGIST_UPKEEP}/tick`}
+          >
+            Geologist ${BUILDING_COSTS.geologist}
           </button>
           <button
             onClick={onStartBelt}
