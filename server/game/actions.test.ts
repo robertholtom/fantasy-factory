@@ -156,6 +156,12 @@ describe("placeBelt", () => {
     const { error } = placeBelt({ x: -1, y: 0 }, { x: 6, y: 5 });
     expect(error).toBe("Out of bounds");
   });
+
+  it("creates belt with empty itemsInTransit array", () => {
+    const { state, error } = placeBelt({ x: 5, y: 5 }, { x: 6, y: 5 });
+    expect(error).toBeUndefined();
+    expect(state.belts[0].itemsInTransit).toEqual([]);
+  });
 });
 
 describe("setRecipe", () => {
@@ -195,8 +201,8 @@ describe("demolishBuilding", () => {
       { id: "m1", type: "miner", position: { x: 5, y: 5 }, progress: 0, storage: emptyInventory(), recipe: "dagger", npcQueue: [] }
     );
     s.belts.push(
-      { id: "belt-1", from: { x: 5, y: 5 }, to: { x: 2, y: 2 } },
-      { id: "belt-2", from: { x: 2, y: 2 }, to: { x: 3, y: 3 } }
+      { id: "belt-1", from: { x: 5, y: 5 }, to: { x: 2, y: 2 }, itemsInTransit: [] },
+      { id: "belt-2", from: { x: 2, y: 2 }, to: { x: 3, y: 3 }, itemsInTransit: [] }
     );
     setState(s);
   });

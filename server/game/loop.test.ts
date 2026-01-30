@@ -177,7 +177,7 @@ describe("game loop", () => {
   });
 
   describe("belt transfer", () => {
-    it("transfers ore from miner to smelter", () => {
+    it("transfers ore from miner to smelter (1 tick travel time for adjacent)", () => {
       setState(makeState({
         buildings: [
           makeBuilding({
@@ -186,17 +186,18 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "s1", type: "smelter", position: { x: 1, y: 0 } }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
         oreNodes: [{ id: "ore-1", position: { x: 0, y: 0 }, type: "iron" as const }],
       }));
       startGameLoop();
+      // Tick 1: item placed on belt (miner: 2, belt: 1, smelter: 0)
       tickN(1);
-      const state = getState();
-      const miner = state.buildings[0];
-      const smelter = state.buildings[1];
-      // Miner produced ore and belt moved 1
-      expect(smelter.storage.iron_ore).toBe(1);
-      expect(miner.storage.iron_ore).toBe(2); // 3 - 1 transferred (+ partial production not yet complete)
+      expect(getState().buildings[0].storage.iron_ore).toBe(2);
+      expect(getState().belts[0].itemsInTransit.length).toBe(1);
+      expect(getState().buildings[1].storage.iron_ore).toBe(0);
+      // Tick 2: item arrives (miner: 1, belt: 1 new, smelter: 1)
+      tickN(1);
+      expect(getState().buildings[1].storage.iron_ore).toBe(1);
     });
 
     it("transfers bars from smelter to forger", () => {
@@ -208,12 +209,12 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "f1", type: "forger", position: { x: 1, y: 0 } }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
-      tickN(1);
+      // 2 ticks needed: 1 to place on belt, 1 to travel
+      tickN(2);
       const state = getState();
-      expect(state.buildings[0].storage.iron_bar).toBe(1);
       expect(state.buildings[1].storage.iron_bar).toBe(1);
     });
 
@@ -226,7 +227,7 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "s1", type: "smelter", position: { x: 1, y: 0 } }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
       tickN(3);
@@ -244,13 +245,57 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "f1", type: "forger", position: { x: 1, y: 0 } }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
       tickN(3);
       const forger = getState().buildings[1];
       expect(forger.storage.iron_ore).toBe(0);
       expect(forger.storage.iron_bar).toBe(0);
+    });
+
+    it("takes longer for distant buildings (5+ cells = 2 ticks)", () => {
+      setState(makeState({
+        buildings: [
+          makeBuilding({
+            id: "m1", type: "miner", position: { x: 0, y: 0 },
+            storage: { ...emptyInventory(), iron_ore: 3 },
+          }),
+          makeBuilding({ id: "s1", type: "smelter", position: { x: 5, y: 0 } }), // distance 5
+        ],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 5, y: 0 }, itemsInTransit: [] }],
+        oreNodes: [{ id: "ore-1", position: { x: 0, y: 0 }, type: "iron" as const }],
+      }));
+      startGameLoop();
+      // Tick 1: item placed on belt (progress 0)
+      tickN(1);
+      expect(getState().buildings[1].storage.iron_ore).toBe(0);
+      expect(getState().belts[0].itemsInTransit.length).toBe(1);
+      // Tick 2: item at progress 0.5, still in transit
+      tickN(1);
+      expect(getState().buildings[1].storage.iron_ore).toBe(0);
+      // Tick 3: item arrives (progress 1.0)
+      tickN(1);
+      expect(getState().buildings[1].storage.iron_ore).toBe(1);
+    });
+
+    it("allows multiple items on long belts", () => {
+      setState(makeState({
+        buildings: [
+          makeBuilding({
+            id: "m1", type: "miner", position: { x: 0, y: 0 },
+            storage: { ...emptyInventory(), iron_ore: 10 },
+          }),
+          makeBuilding({ id: "s1", type: "smelter", position: { x: 10, y: 0 } }), // distance 10 = 3 tick travel
+        ],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 10, y: 0 }, itemsInTransit: [] }],
+        oreNodes: [{ id: "ore-1", position: { x: 0, y: 0 }, type: "iron" as const }],
+      }));
+      startGameLoop();
+      // After 3 ticks, should have up to 3 items in transit
+      tickN(3);
+      const belt = getState().belts[0];
+      expect(belt.itemsInTransit.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -280,17 +325,18 @@ describe("game loop", () => {
           makeBuilding({ id: "f1", type: "forger", position: { x: 2, y: 0 }, recipe: "dagger" }),
         ],
         belts: [
-          { id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
-          { id: "belt-2", from: { x: 1, y: 0 }, to: { x: 2, y: 0 } },
+          { id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] },
+          { id: "belt-2", from: { x: 1, y: 0 }, to: { x: 2, y: 0 }, itemsInTransit: [] },
         ],
         oreNodes: [{ id: "ore-1", position: { x: 0, y: 0 }, type: "iron" as const }],
       }));
       startGameLoop();
       // Run enough ticks for full chain: mine ore, transfer, smelt, transfer, forge
-      tickN(30);
+      // With belt travel time, need extra ticks for transfers
+      tickN(35);
       const state = getState();
       const forger = state.buildings.find(b => b.id === "f1")!;
-      // After 30 ticks, forger should have produced at least 1 dagger in storage
+      // After 35 ticks, forger should have produced at least 1 dagger in storage
       expect(forger.storage.dagger).toBeGreaterThanOrEqual(1);
     });
   });
@@ -861,16 +907,16 @@ describe("game loop", () => {
           makeBuilding({ id: "shop1", type: "shop", position: { x: 8, y: 5 }, npcQueue: daggerNpcs }),
         ],
         belts: [
-          { id: "belt-1", from: { x: 5, y: 5 }, to: { x: 6, y: 5 } },
-          { id: "belt-2", from: { x: 6, y: 5 }, to: { x: 7, y: 5 } },
-          { id: "belt-3", from: { x: 7, y: 5 }, to: { x: 8, y: 5 } },
+          { id: "belt-1", from: { x: 5, y: 5 }, to: { x: 6, y: 5 }, itemsInTransit: [] },
+          { id: "belt-2", from: { x: 6, y: 5 }, to: { x: 7, y: 5 }, itemsInTransit: [] },
+          { id: "belt-3", from: { x: 7, y: 5 }, to: { x: 8, y: 5 }, itemsInTransit: [] },
         ],
       }));
 
       const initialCurrency = getState().currency;
       startGameLoop();
-      // Run enough ticks for full production cycle
-      tickN(50);
+      // Run enough ticks for full production cycle (with belt travel time)
+      tickN(60);
       const state = getState();
 
       // Currency should have increased from sales
@@ -939,14 +985,15 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "shop1", type: "shop", position: { x: 1, y: 0 }, npcQueue: fullQueue }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
-      tickN(1);
+      // 2 ticks: 1 to place on belt, 1 to travel
+      tickN(2);
       const state = getState();
       const forger = state.buildings[0];
       const shop = state.buildings[1];
-      expect(forger.storage.dagger).toBe(2);
+      expect(forger.storage.dagger).toBe(1); // 3 - 2 (one delivered, one in transit)
       expect(shop.storage.dagger).toBe(1);
     });
 
@@ -963,10 +1010,10 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "shop1", type: "shop", position: { x: 1, y: 0 }, npcQueue: fullQueue }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
-      tickN(1);
+      tickN(2);
       const shop = getState().buildings[1];
       expect(shop.storage.armour).toBe(1);
     });
@@ -984,10 +1031,10 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "shop1", type: "shop", position: { x: 1, y: 0 }, npcQueue: fullQueue }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
-      tickN(1);
+      tickN(2);
       const shop = getState().buildings[1];
       expect(shop.storage.wand).toBe(1);
     });
@@ -1005,10 +1052,10 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "shop1", type: "shop", position: { x: 1, y: 0 }, npcQueue: fullQueue }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
-      tickN(1);
+      tickN(2);
       const shop = getState().buildings[1];
       expect(shop.storage.magic_powder).toBe(1);
     });
@@ -1022,10 +1069,10 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "shop1", type: "shop", position: { x: 1, y: 0 } }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
-      tickN(3);
+      tickN(5);
       const shop = getState().buildings[1];
       expect(shop.storage.iron_ore).toBe(0);
       expect(shop.storage.iron_bar).toBe(0);
@@ -1040,10 +1087,10 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "shop1", type: "shop", position: { x: 1, y: 0 } }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
-      tickN(3);
+      tickN(5);
       const shop = getState().buildings[1];
       expect(shop.storage.iron_bar).toBe(0);
       expect(shop.storage.copper_bar).toBe(0);
@@ -1058,10 +1105,10 @@ describe("game loop", () => {
           }),
           makeBuilding({ id: "shop1", type: "shop", position: { x: 1, y: 0 } }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
-      tickN(3);
+      tickN(5);
       const shop = getState().buildings[1];
       expect(shop.storage.copper_ore).toBe(0);
     });
@@ -1084,13 +1131,14 @@ describe("game loop", () => {
             ],
           }),
         ],
-        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 } }],
+        belts: [{ id: "belt-1", from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, itemsInTransit: [] }],
       }));
       startGameLoop();
-      tickN(1);
+      // 2 ticks: 1 to place on belt, 1 to deliver and sell
+      tickN(2);
       const state = getState();
-      // Dagger transferred to shop and sold to NPC in same tick
-      // 3 filler NPCs remain
+      // Dagger transferred to shop and sold to NPC
+      // 3 filler NPCs remain (patience decremented by 2)
       expect(state.buildings[0].storage.dagger).toBe(0);
       expect(state.buildings[1].storage.dagger).toBe(0);
       expect(state.buildings[1].npcQueue).toHaveLength(3);

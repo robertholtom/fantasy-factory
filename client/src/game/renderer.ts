@@ -1,4 +1,4 @@
-import { GameState, Belt, Building, OreNode, ItemType, RECIPE_BAR_TYPE, FINISHED_GOODS } from "../../../shared/types";
+import { GameState, Belt, Building, OreNode, ItemType, getBeltTravelTime } from "../../../shared/types";
 
 // SVG icons as data URLs
 const ICONS: Record<string, string> = {
@@ -412,91 +412,63 @@ function drawArrowhead(
   ctx.fill();
 }
 
-function getTransferableItemType(src: Building, dst: Building): ItemType | null {
-  // Determine what item would transfer based on destination type
-  if (dst.type === "smelter") {
-    if (src.storage.iron_ore > 0) return "iron_ore";
-    if (src.storage.copper_ore > 0) return "copper_ore";
-    return null;
-  }
-
-  if (dst.type === "forger") {
-    const neededBar = RECIPE_BAR_TYPE[dst.recipe];
-    if (src.storage[neededBar] > 0) return neededBar;
-    return null;
-  }
-
-  if (dst.type === "shop") {
-    for (const item of FINISHED_GOODS) {
-      if (src.storage[item] > 0) return item;
-    }
-    return null;
-  }
-
-  return null;
-}
-
 function drawBeltItems(
   ctx: CanvasRenderingContext2D,
   belt: Belt,
-  state: GameState,
+  _state: GameState,
   cellSize: number,
   animationProgress: number
 ): void {
-  const src = state.buildings.find(
-    (b) => b.position.x === belt.from.x && b.position.y === belt.from.y
-  );
-  const dst = state.buildings.find(
-    (b) => b.position.x === belt.to.x && b.position.y === belt.to.y
-  );
+  // Skip if no items in transit
+  if (!belt.itemsInTransit || belt.itemsInTransit.length === 0) return;
 
-  if (!src || !dst) return;
-
-  // Check what item could transfer
-  const itemType = getTransferableItemType(src, dst);
-  if (!itemType) return;
-
-  // Calculate item position along belt
   const half = cellSize / 2;
   const fromX = belt.from.x * cellSize + half;
   const fromY = belt.from.y * cellSize + half;
   const toX = belt.to.x * cellSize + half;
   const toY = belt.to.y * cellSize + half;
 
-  // Use animation progress to position the item
-  const progress = animationProgress;
-  const itemX = fromX + (toX - fromX) * progress;
-  const itemY = fromY + (toY - fromY) * progress;
-
-  // Draw item icon
-  const iconKey = `item_${itemType}`;
-  const img = iconImages[iconKey];
+  const travelTime = getBeltTravelTime(belt.from, belt.to);
+  const progressPerTick = 1 / travelTime;
   const itemSize = Math.floor(cellSize * 0.4);
 
-  if (img && img.complete) {
-    ctx.drawImage(
-      img,
-      itemX - itemSize / 2,
-      itemY - itemSize / 2,
-      itemSize,
-      itemSize
-    );
-  } else {
-    // Fallback: draw a small colored circle
-    const itemColors: Record<string, string> = {
-      iron_ore: "#e07020",
-      copper_ore: "#40b0b0",
-      iron_bar: "#808080",
-      copper_bar: "#b87333",
-      dagger: "#a0a0a0",
-      armour: "#707070",
-      wand: "#9040c0",
-      magic_powder: "#8040c0",
-    };
-    ctx.fillStyle = itemColors[itemType] || "#888";
-    ctx.beginPath();
-    ctx.arc(itemX, itemY, itemSize / 3, 0, Math.PI * 2);
-    ctx.fill();
+  const itemColors: Record<string, string> = {
+    iron_ore: "#e07020",
+    copper_ore: "#40b0b0",
+    iron_bar: "#808080",
+    copper_bar: "#b87333",
+    dagger: "#a0a0a0",
+    armour: "#707070",
+    wand: "#9040c0",
+    magic_powder: "#8040c0",
+  };
+
+  for (const item of belt.itemsInTransit) {
+    // Calculate visual progress: base progress + animated portion of current tick
+    const visualProgress = Math.min(1, item.progress + progressPerTick * animationProgress);
+
+    const itemX = fromX + (toX - fromX) * visualProgress;
+    const itemY = fromY + (toY - fromY) * visualProgress;
+
+    // Draw item icon
+    const iconKey = `item_${item.itemType}`;
+    const img = iconImages[iconKey];
+
+    if (img && img.complete) {
+      ctx.drawImage(
+        img,
+        itemX - itemSize / 2,
+        itemY - itemSize / 2,
+        itemSize,
+        itemSize
+      );
+    } else {
+      // Fallback: draw a small colored circle
+      ctx.fillStyle = itemColors[item.itemType] || "#888";
+      ctx.beginPath();
+      ctx.arc(itemX, itemY, itemSize / 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 

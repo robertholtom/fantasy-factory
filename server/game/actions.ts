@@ -109,6 +109,7 @@ export function placeBelt(
     id: `belt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     from,
     to,
+    itemsInTransit: [],
   });
 
   return { state };
@@ -236,6 +237,7 @@ export function autoPlay(): { state: GameState; error?: string } {
       id: `belt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       from,
       to,
+      itemsInTransit: [],
     });
     return true;
   }
