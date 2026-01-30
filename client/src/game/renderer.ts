@@ -552,21 +552,49 @@ function drawBuilding(
     ctx.fillRect(x + 2, barY, (size - 4) * Math.min(building.progress, 1), barHeight);
   }
 
-  // Storage indicator (small text above building)
+  // Storage indicator (icons with counts above building)
   const storageItems = Object.entries(building.storage).filter(([, v]) => v > 0);
   if (storageItems.length > 0) {
-    const abbrev: Record<string, string> = {
-      iron_ore: "o", iron_bar: "b", dagger: "d", armour: "a",
-      copper_ore: "co", copper_bar: "cb", wand: "w", magic_powder: "mp",
-    };
-    const text = storageItems
-      .map(([k, v]) => `${v}${abbrev[k] ?? k}`)
-      .join(" ");
-    ctx.fillStyle = "#ccc";
-    ctx.font = `${Math.floor(cellSize * 0.22)}px monospace`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "bottom";
-    ctx.fillText(text, x + size / 2, y - 1);
+    const iconSize = Math.floor(cellSize * 0.35);
+    const spacing = iconSize + 2;
+    const totalWidth = storageItems.length * spacing - 2;
+    const startX = x + size / 2 - totalWidth / 2;
+    const iconY = y - iconSize - 4;
+
+    for (let i = 0; i < storageItems.length; i++) {
+      const [itemType, count] = storageItems[i];
+      const iconX = startX + i * spacing;
+      const iconKey = `item_${itemType}`;
+      const img = iconImages[iconKey];
+
+      if (img && img.complete) {
+        ctx.drawImage(img, iconX, iconY, iconSize, iconSize);
+      } else {
+        // Fallback colored circle
+        const colors: Record<string, string> = {
+          iron_ore: "#e07020", copper_ore: "#40b0b0",
+          iron_bar: "#808080", copper_bar: "#b87333",
+          dagger: "#a0a0a0", armour: "#707070",
+          wand: "#9040c0", magic_powder: "#8040c0",
+        };
+        ctx.fillStyle = colors[itemType] || "#888";
+        ctx.beginPath();
+        ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, iconSize / 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Count badge
+      ctx.fillStyle = "rgba(0,0,0,0.8)";
+      const badgeSize = Math.floor(iconSize * 0.7);
+      ctx.beginPath();
+      ctx.arc(iconX + iconSize - badgeSize / 2, iconY + iconSize - badgeSize / 2, badgeSize / 2 + 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = `bold ${Math.floor(iconSize * 0.6)}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(count), iconX + iconSize - badgeSize / 2, iconY + iconSize - badgeSize / 2);
+    }
   }
 
   // NPC queue for shops (icons with patience arcs)

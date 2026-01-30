@@ -170,34 +170,38 @@ export function resetGame(): GameState {
   return newState;
 }
 
-export function toggleAiMode(): GameState {
+export function toggleAiMode(): { state: GameState; error?: string } {
   const state = getState();
+
+  // If turning ON and no buildings exist, run auto-play setup
+  if (!state.aiMode && state.buildings.length === 0) {
+    return autoPlay();
+  }
+
+  // Otherwise just toggle the flag
   state.aiMode = !state.aiMode;
-  return state;
+  return { state };
 }
 
 // Auto-play: Build an optimal factory layout and enable AI mode
+// Uses 2:1:1 ratio (2 miners : 1 smelter : 1 forger) for optimal throughput
 export function autoPlay(): { state: GameState; error?: string } {
-  // Reset to fresh state with AI mode enabled
   const state = createInitialState();
   state.aiMode = true;
   setState(state);
 
   const posKey = (p: Position) => `${p.x},${p.y}`;
+  const reserved = new Set<string>();
 
-  // Track which cells have buildings
   function isOccupied(pos: Position): boolean {
     return state.buildings.some(b => b.position.x === pos.x && b.position.y === pos.y);
   }
 
-  // Helper to find nearest empty cell to a position
-  function findEmptyNear(target: Position, reserved: Set<string>): Position | null {
-    // Check adjacent cells first (distance 1), then expand
+  function findEmptyNear(target: Position): Position | null {
     const directions = [
       { dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
       { dx: 1, dy: 1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
     ];
-
     for (let radius = 1; radius <= 10; radius++) {
       for (const dir of directions) {
         const pos = { x: target.x + dir.dx * radius, y: target.y + dir.dy * radius };
@@ -211,11 +215,9 @@ export function autoPlay(): { state: GameState; error?: string } {
     return null;
   }
 
-  // Helper to place a building
   function place(type: BuildingType, pos: Position, recipe?: ForgerRecipe): boolean {
     if (state.currency < BUILDING_COSTS[type]) return false;
     if (isOccupied(pos)) return false;
-
     state.currency -= BUILDING_COSTS[type];
     state.buildings.push({
       id: `building-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -226,12 +228,16 @@ export function autoPlay(): { state: GameState; error?: string } {
       recipe: recipe || "dagger",
       npcQueue: [],
     });
+    reserved.add(posKey(pos));
     return true;
   }
 
-  // Helper to place a belt
   function belt(from: Position, to: Position): boolean {
     if (state.currency < BELT_COST) return false;
+    const exists = state.belts.some(b =>
+      b.from.x === from.x && b.from.y === from.y && b.to.x === to.x && b.to.y === to.y
+    );
+    if (exists) return false;
     state.currency -= BELT_COST;
     state.belts.push({
       id: `belt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -242,87 +248,80 @@ export function autoPlay(): { state: GameState; error?: string } {
     return true;
   }
 
+  // Build a production chain: up to 2 miners -> smelter -> forger
+  // Returns true if chain was built
+  function buildChain(oreNodes: typeof state.oreNodes, recipe: ForgerRecipe, shopPos: Position | null): Position | null {
+    if (oreNodes.length === 0) return shopPos;
+
+    // Cost: 1-2 miners + smelter + forger + 3-4 belts (+ shop if first)
+    const chainCost = BUILDING_COSTS.miner + BUILDING_COSTS.smelter + BUILDING_COSTS.forger + BELT_COST * 3;
+    const shopCost = shopPos ? 0 : BUILDING_COSTS.shop + BELT_COST;
+    if (state.currency < chainCost + shopCost) return shopPos;
+
+    const miner1Pos = oreNodes[0].position;
+    reserved.add(posKey(miner1Pos));
+
+    const smelterPos = findEmptyNear(miner1Pos);
+    if (!smelterPos) return shopPos;
+    reserved.add(posKey(smelterPos));
+
+    const forgerPos = findEmptyNear(smelterPos);
+    if (!forgerPos) return shopPos;
+    reserved.add(posKey(forgerPos));
+
+    let currentShopPos = shopPos;
+    if (!currentShopPos) {
+      currentShopPos = findEmptyNear(forgerPos);
+      if (!currentShopPos) return shopPos;
+      reserved.add(posKey(currentShopPos));
+    }
+
+    // Place buildings
+    place("miner", miner1Pos);
+    place("smelter", smelterPos);
+    place("forger", forgerPos, recipe);
+    if (!shopPos) place("shop", currentShopPos);
+
+    // Place belts
+    belt(miner1Pos, smelterPos);
+    belt(smelterPos, forgerPos);
+    belt(forgerPos, currentShopPos);
+
+    // Add second miner if available (2:1 ratio)
+    if (oreNodes.length > 1 && state.currency >= BUILDING_COSTS.miner + BELT_COST) {
+      const miner2Pos = oreNodes[1].position;
+      if (place("miner", miner2Pos)) {
+        belt(miner2Pos, smelterPos);
+      }
+    }
+
+    return currentShopPos;
+  }
+
   // Group ore nodes by type
-  const ironNodes = state.oreNodes.filter(n => n.type === "iron");
-  const copperNodes = state.oreNodes.filter(n => n.type === "copper");
+  const ironNodes = [...state.oreNodes.filter(n => n.type === "iron")];
+  const copperNodes = [...state.oreNodes.filter(n => n.type === "copper")];
 
-  // Pick primary ore type (whichever has more nodes)
-  const primaryNodes = ironNodes.length >= copperNodes.length ? ironNodes : copperNodes;
-  const secondaryNodes = ironNodes.length >= copperNodes.length ? copperNodes : ironNodes;
-  const primaryRecipe: ForgerRecipe = primaryNodes === ironNodes ? "dagger" : "wand";
-  const secondaryRecipe: ForgerRecipe = primaryNodes === ironNodes ? "wand" : "dagger";
-
-  // STEP 1: Build one complete chain first
-  if (primaryNodes.length === 0) {
+  if (ironNodes.length === 0 && copperNodes.length === 0) {
     return { state, error: "No ore nodes found" };
   }
 
-  // Plan positions before placing anything
-  const reserved = new Set<string>();
+  let shopPos: Position | null = null;
 
-  const minerPos = primaryNodes[0].position;
-  reserved.add(posKey(minerPos));
-
-  const smelterPos = findEmptyNear(minerPos, reserved);
-  if (!smelterPos) return { state, error: "No space for smelter" };
-  reserved.add(posKey(smelterPos));
-
-  const forgerPos = findEmptyNear(smelterPos, reserved);
-  if (!forgerPos) return { state, error: "No space for forger" };
-  reserved.add(posKey(forgerPos));
-
-  const shopPos = findEmptyNear(forgerPos, reserved);
-  if (!shopPos) return { state, error: "No space for shop" };
-  reserved.add(posKey(shopPos));
-
-  // Place buildings
-  place("miner", minerPos);
-  place("smelter", smelterPos);
-  place("forger", forgerPos, primaryRecipe);
-  place("shop", shopPos);
-
-  // Place belts for primary chain
-  belt(minerPos, smelterPos);
-  belt(smelterPos, forgerPos);
-  belt(forgerPos, shopPos);
-
-  // STEP 2: Add more miners to primary chain if budget allows
-  for (let i = 1; i < primaryNodes.length; i++) {
-    const node = primaryNodes[i];
-    if (state.currency < BUILDING_COSTS.miner + BELT_COST) break;
-    if (place("miner", node.position)) {
-      belt(node.position, smelterPos);
-    }
+  // Build chains for iron (2 nodes per chain)
+  while (ironNodes.length > 0 && state.currency >= 100) {
+    const nodesToUse = ironNodes.splice(0, 2);
+    const newShopPos = buildChain(nodesToUse, "dagger", shopPos);
+    if (newShopPos === shopPos && shopPos !== null) break; // Failed to build
+    shopPos = newShopPos;
   }
 
-  // STEP 3: If we have enough budget, add a secondary chain
-  // Need: miner(10) + smelter(25) + forger(50) + 3 belts(15) = 100 (reuse shop)
-  if (secondaryNodes.length > 0 && state.currency >= 100) {
-    const secMinerPos = secondaryNodes[0].position;
-    reserved.add(posKey(secMinerPos));
-
-    const secSmelterPos = findEmptyNear(secMinerPos, reserved);
-    if (secSmelterPos) reserved.add(posKey(secSmelterPos));
-
-    const secForgerPos = secSmelterPos ? findEmptyNear(secSmelterPos, reserved) : null;
-
-    if (secSmelterPos && secForgerPos) {
-      place("miner", secMinerPos);
-      place("smelter", secSmelterPos);
-      place("forger", secForgerPos, secondaryRecipe);
-      belt(secMinerPos, secSmelterPos);
-      belt(secSmelterPos, secForgerPos);
-      belt(secForgerPos, shopPos);
-
-      // Add more secondary miners if budget allows
-      for (let i = 1; i < secondaryNodes.length; i++) {
-        const node = secondaryNodes[i];
-        if (state.currency < BUILDING_COSTS.miner + BELT_COST) break;
-        if (place("miner", node.position)) {
-          belt(node.position, secSmelterPos);
-        }
-      }
-    }
+  // Build chains for copper (2 nodes per chain)
+  while (copperNodes.length > 0 && state.currency >= 100) {
+    const nodesToUse = copperNodes.splice(0, 2);
+    const newShopPos = buildChain(nodesToUse, "wand", shopPos);
+    if (newShopPos === shopPos && shopPos !== null) break;
+    shopPos = newShopPos;
   }
 
   return { state };

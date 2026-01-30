@@ -1,4 +1,5 @@
 import { GameState, BuildingType, BUILDING_COSTS, BELT_COST } from "../../../shared/types";
+import { ITEM_ICONS } from "./icons";
 import { PlacementMode } from "./GameCanvas";
 
 interface Props {
@@ -9,7 +10,6 @@ interface Props {
   onStartBelt: () => void;
   onStartDemolish: () => void;
   onReset: () => void;
-  onAutoPlay: () => void;
   onToggleAiMode: () => void;
   onCancelPlacement: () => void;
 }
@@ -22,7 +22,6 @@ export default function HUD({
   onStartBelt,
   onStartDemolish,
   onReset,
-  onAutoPlay,
   onToggleAiMode,
   onCancelPlacement,
 }: Props) {
@@ -39,12 +38,30 @@ export default function HUD({
       </div>
 
       <div className="hud-section">
-        <h3>Inventory</h3>
-        <div className="inventory">
-          <span>Daggers: {inventory.dagger}</span>
-          <span>Armour: {inventory.armour}</span>
-          <span>Wands: {inventory.wand}</span>
-          <span>Magic Powder: {inventory.magic_powder}</span>
+        <h3>Shop Stock</h3>
+        <div className="inventory icon-grid">
+          {(() => {
+            const shops = state.buildings.filter(b => b.type === "shop");
+            const stock = { dagger: 0, armour: 0, wand: 0, magic_powder: 0 };
+            for (const shop of shops) {
+              stock.dagger += shop.storage.dagger;
+              stock.armour += shop.storage.armour;
+              stock.wand += shop.storage.wand;
+              stock.magic_powder += shop.storage.magic_powder;
+            }
+            const items: Array<{key: string; count: number; label: string}> = [
+              { key: "dagger", count: stock.dagger, label: "Dagger" },
+              { key: "armour", count: stock.armour, label: "Armour" },
+              { key: "wand", count: stock.wand, label: "Wand" },
+              { key: "magic_powder", count: stock.magic_powder, label: "Magic Powder" },
+            ];
+            return items.map(item => (
+              <div key={item.key} className="stock-item" title={item.label}>
+                <img src={ITEM_ICONS[item.key]} alt={item.label} className="item-icon" />
+                <span className="item-count">{item.count}</span>
+              </div>
+            ));
+          })()}
         </div>
       </div>
 
@@ -141,12 +158,10 @@ export default function HUD({
       {error && <div className="error-msg">{error}</div>}
 
       <div className="hud-section">
-        <button className="autoplay-btn" onClick={onAutoPlay} disabled={inPlacement}>
-          Auto-Play (AI Build)
-        </button>
         <button
           className={`ai-mode-btn ${state.aiMode ? "active" : ""}`}
           onClick={onToggleAiMode}
+          disabled={inPlacement}
         >
           AI Mode: {state.aiMode ? "ON" : "OFF"}
         </button>

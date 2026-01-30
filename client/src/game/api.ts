@@ -75,16 +75,11 @@ export async function resetGame(): Promise<GameState> {
   return res.json();
 }
 
-export async function autoPlay(): Promise<{ state?: GameState; error?: string }> {
-  const res = await fetch(`${BASE}/autoplay`, { method: "POST" });
+export async function toggleAiMode(): Promise<{ state?: GameState; error?: string }> {
+  const res = await fetch(`${BASE}/ai-mode`, { method: "POST" });
   const data = await res.json();
   if (!res.ok) {
     return { error: data.error, state: data.state };
   }
   return { state: data };
-}
-
-export async function toggleAiMode(): Promise<GameState> {
-  const res = await fetch(`${BASE}/ai-mode`, { method: "POST" });
-  return res.json();
 }

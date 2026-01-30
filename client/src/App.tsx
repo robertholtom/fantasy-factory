@@ -123,8 +123,8 @@ function App() {
     setGhostPos(null);
   }, []);
 
-  const handleAutoPlay = useCallback(async () => {
-    const result = await api.autoPlay();
+  const handleToggleAiMode = useCallback(async () => {
+    const result = await api.toggleAiMode();
     if (result.error) {
       showError(result.error);
     } else if (result.state) {
@@ -132,11 +132,6 @@ function App() {
     }
     setPlacementMode(null);
     setGhostPos(null);
-  }, []);
-
-  const handleToggleAiMode = useCallback(async () => {
-    const newState = await api.toggleAiMode();
-    setState(newState);
   }, []);
 
   return (
@@ -149,7 +144,6 @@ function App() {
         onStartBelt={handleStartBelt}
         onStartDemolish={handleStartDemolish}
         onReset={handleReset}
-        onAutoPlay={handleAutoPlay}
         onToggleAiMode={handleToggleAiMode}
         onCancelPlacement={handleCancelPlacement}
       />

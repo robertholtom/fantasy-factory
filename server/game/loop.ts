@@ -211,9 +211,126 @@ function spawnNpc(): Npc {
   };
 }
 
+// AI recipe optimization - switch forgers to maximize profit
+function aiOptimizeRecipes(state: GameState): void {
+  const shops = state.buildings.filter(b => b.type === "shop");
+  const forgers = state.buildings.filter(b => b.type === "forger");
+
+  if (shops.length === 0 || forgers.length === 0) return;
+
+  // Calculate profit for each NPC (price × multiplier) with urgency weight
+  interface NpcProfit {
+    item: FinishedGood;
+    profit: number;
+    urgency: number; // Lower patience = higher urgency
+    score: number;   // Combined profit + urgency score
+  }
+
+  const npcProfits: NpcProfit[] = [];
+  for (const shop of shops) {
+    for (const npc of shop.npcQueue) {
+      const basePrice = SELL_PRICES[npc.wantedItem];
+      const isIron = RECIPE_BAR_TYPE[npc.wantedItem] === "iron_bar";
+      const mult = isIron
+        ? NPC_PRICE_MULTIPLIER[npc.npcType].iron
+        : NPC_PRICE_MULTIPLIER[npc.npcType].copper;
+      const profit = Math.round(basePrice * mult);
+      // Urgency: invert patience ratio (0 patience = max urgency)
+      const urgency = 1 - (npc.patienceLeft / npc.maxPatience);
+      // Score: profit weighted by urgency (urgent high-value NPCs first)
+      const score = profit * (1 + urgency * 2);
+      npcProfits.push({ item: npc.wantedItem, profit, urgency, score });
+    }
+  }
+
+  if (npcProfits.length === 0) return;
+
+  // Sort by score descending (highest profit + urgency first)
+  npcProfits.sort((a, b) => b.score - a.score);
+
+  // Count supply in shop storage
+  const supply: Record<FinishedGood, number> = { dagger: 0, armour: 0, wand: 0, magic_powder: 0 };
+  for (const shop of shops) {
+    for (const item of FINISHED_GOODS) {
+      supply[item] += shop.storage[item];
+    }
+  }
+
+  // Track which NPCs can be served by existing supply
+  const unservedNpcs: NpcProfit[] = [];
+  const tempSupply = { ...supply };
+  for (const npc of npcProfits) {
+    if (tempSupply[npc.item] > 0) {
+      tempSupply[npc.item]--;
+    } else {
+      unservedNpcs.push(npc);
+    }
+  }
+
+  if (unservedNpcs.length === 0) return;
+
+  // Determine which bar type each forger uses
+  function getForgerBarType(forger: Building): "iron_bar" | "copper_bar" | null {
+    const feedBelt = state.belts.find(b =>
+      b.to.x === forger.position.x && b.to.y === forger.position.y
+    );
+    if (!feedBelt) return null;
+
+    const smelter = state.buildings.find(b =>
+      b.type === "smelter" && b.position.x === feedBelt.from.x && b.position.y === feedBelt.from.y
+    );
+    if (!smelter) return null;
+
+    const minerBelt = state.belts.find(b =>
+      b.to.x === smelter.position.x && b.to.y === smelter.position.y
+    );
+    if (!minerBelt) return null;
+
+    const miner = state.buildings.find(b =>
+      b.type === "miner" && b.position.x === minerBelt.from.x && b.position.y === minerBelt.from.y
+    );
+    if (!miner) return null;
+
+    const oreNode = state.oreNodes.find(n =>
+      n.position.x === miner.position.x && n.position.y === miner.position.y
+    );
+
+    return oreNode?.type === "copper" ? "copper_bar" : "iron_bar";
+  }
+
+  // Find highest-value unserved NPC we can produce for
+  for (const npc of unservedNpcs) {
+    const neededBarType = RECIPE_BAR_TYPE[npc.item];
+
+    // Find a forger that can switch to this item
+    for (const forger of forgers) {
+      if (forger.recipe === npc.item) continue; // Already producing
+      if (forger.progress > 0.3) continue; // Don't interrupt if >30% done
+
+      const forgerBarType = getForgerBarType(forger);
+      if (forgerBarType !== neededBarType) continue;
+
+      // Check if current recipe is serving any high-value unserved NPCs
+      const currentRecipeValue = unservedNpcs
+        .filter(n => n.item === forger.recipe)
+        .reduce((sum, n) => sum + n.score, 0);
+
+      // Only switch if new item has higher total value
+      if (npc.score > currentRecipeValue) {
+        forger.recipe = npc.item;
+        forger.progress = 0;
+        return; // One switch per tick
+      }
+    }
+  }
+}
+
 // AI expansion logic - runs when aiMode is enabled
 function aiExpand(state: GameState): void {
   if (!state.aiMode) return;
+
+  // Priority 0: Optimize forger recipes based on NPC demand
+  aiOptimizeRecipes(state);
 
   const posKey = (p: Position) => `${p.x},${p.y}`;
 
@@ -373,13 +490,11 @@ function aiExpand(state: GameState): void {
     }
   }
 
-  // Priority 3: Add more miners to existing smelters (only same ore type)
+  // Priority 3: Add more miners to existing smelters (only same ore type, max 2 per smelter)
   if (unmined.length > 0 && smelters.length > 0) {
     const cost = BUILDING_COSTS.miner + BELT_COST;
     if (state.currency >= cost) {
-      // Find a smelter that could use more input
       for (const smelter of smelters) {
-        // Determine what ore type this smelter processes
         const feedingBelts = state.belts.filter(b =>
           b.to.x === smelter.position.x && b.to.y === smelter.position.y
         );
@@ -400,8 +515,8 @@ function aiExpand(state: GameState): void {
           }
         }
 
-        if (feedingBelts.length < 3 && smelterOreType) {
-          // Find unmined ore of the SAME type close to this smelter
+        // Max 2 miners per smelter to maintain throughput balance
+        if (feedingBelts.length < 2 && smelterOreType) {
           const sameTypeUnmined = unmined.filter(n => n.type === smelterOreType);
           const oreByDistance = sameTypeUnmined.map(n => ({
             node: n,
@@ -436,21 +551,19 @@ function aiExpand(state: GameState): void {
     }
   }
 
-  // Priority 5: Build a secondary production chain for the other ore type
+  // Priority 5: Build new production chains for any unmined ore (expand capacity)
   if (shops.length > 0 && unmined.length > 0) {
-    // Check what ore types we're already processing
-    const processedOreTypes = new Set<string>();
-    for (const miner of miners) {
-      const oreNode = state.oreNodes.find(n => n.position.x === miner.position.x && n.position.y === miner.position.y);
-      if (oreNode) processedOreTypes.add(oreNode.type);
-    }
+    const fullChainCost = BUILDING_COSTS.miner + BUILDING_COSTS.smelter + BUILDING_COSTS.forger + BELT_COST * 3;
+    if (state.currency >= fullChainCost) {
+      // Pick closest unmined ore to shop for efficiency
+      const shop = shops[0];
+      const oreByDistance = unmined.map(n => ({
+        node: n,
+        dist: Math.abs(n.position.x - shop.position.x) + Math.abs(n.position.y - shop.position.y)
+      })).sort((a, b) => a.dist - b.dist);
 
-    // Find unmined ore of a different type
-    const differentOre = unmined.find(n => !processedOreTypes.has(n.type));
-    if (differentOre) {
-      const fullChainCost = BUILDING_COSTS.miner + BUILDING_COSTS.smelter + BUILDING_COSTS.forger + BELT_COST * 3;
-      if (state.currency >= fullChainCost) {
-        const minerPos = differentOre.position;
+      for (const { node } of oreByDistance) {
+        const minerPos = node.position;
         reserved.add(posKey(minerPos));
 
         const smelterPos = findEmptyNear(minerPos, reserved);
@@ -459,17 +572,19 @@ function aiExpand(state: GameState): void {
           const forgerPos = findEmptyNear(smelterPos, reserved);
 
           if (forgerPos) {
-            const recipe: ForgerRecipe = differentOre.type === "copper" ? "wand" : "dagger";
+            const recipe: ForgerRecipe = node.type === "copper" ? "wand" : "dagger";
 
             placeBuilding("miner", minerPos);
             placeBuilding("smelter", smelterPos);
             placeBuilding("forger", forgerPos, recipe);
             placeBelt(minerPos, smelterPos);
             placeBelt(smelterPos, forgerPos);
-            placeBelt(forgerPos, shops[0].position);
+            placeBelt(forgerPos, shop.position);
             return;
           }
         }
+        // Clean up reserved if we couldn't place
+        reserved.delete(posKey(minerPos));
       }
     }
   }

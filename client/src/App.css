@@ -60,6 +60,33 @@ body {
   font-size: 0.9rem;
 }
 
+.inventory.icon-grid {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stock-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #2a2a4e;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.item-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.item-count {
+  font-weight: bold;
+  font-size: 0.9rem;
+  min-width: 1.5em;
+  text-align: center;
+}
+
 .buttons {
   display: flex;
   flex-direction: column;

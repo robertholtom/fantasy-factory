@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { getState } from "../game/state.js";
-import { placeBuilding, placeBelt, setRecipe, demolishBuilding, resetGame, autoPlay, toggleAiMode } from "../game/actions.js";
+import { placeBuilding, placeBelt, setRecipe, demolishBuilding, resetGame, toggleAiMode } from "../game/actions.js";
 import { PlaceBuildingRequest, PlaceBeltRequest, SetRecipeRequest, DemolishBuildingRequest } from "../../shared/types.js";
 
 const router = Router();
@@ -78,17 +78,12 @@ router.post("/reset", (_req, res) => {
   res.json(state);
 });
 
-router.post("/autoplay", (_req, res) => {
-  const { state, error } = autoPlay();
+router.post("/ai-mode", (_req, res) => {
+  const { state, error } = toggleAiMode();
   if (error) {
     res.status(400).json({ error, state });
     return;
   }
-  res.json(state);
-});
-
-router.post("/ai-mode", (_req, res) => {
-  const state = toggleAiMode();
   res.json(state);
 });
 
