@@ -9,14 +9,20 @@ export type OreType = "iron" | "copper";
 
 export type ForgerRecipe = "dagger" | "armour" | "wand" | "magic_powder";
 
-export type NpcType = "warrior" | "mage" | "collector" | "merchant";
+export type NpcType = "warrior" | "mage" | "collector" | "merchant" | "king";
 
 export type FinishedGood = "dagger" | "armour" | "wand" | "magic_powder";
+
+export interface KingDemand {
+  items: { item: FinishedGood; quantity: number }[];
+  totalValue: number;
+}
 
 export interface Npc {
   id: string;
   npcType: NpcType;
   wantedItem: FinishedGood;
+  kingDemand?: KingDemand;  // Only for king
   patienceLeft: number;
   maxPatience: number;
 }
@@ -88,6 +94,8 @@ export interface GameState {
   mapWidth: number;
   mapHeight: number;
   geologistExplorer: GeologistExplorer | null; // Animated character when geologist building exists
+  kingPenaltyTicksLeft: number;  // 0 = no penalty
+  lastKingTick: number;          // Track cooldown
 }
 
 export const BUILDING_COSTS: Record<BuildingType, number> = {
@@ -169,6 +177,7 @@ export const NPC_PATIENCE: Record<NpcType, [number, number]> = {
   mage: [15, 25],
   collector: [20, 30],
   merchant: [30, 45],
+  king: [40, 60],
 };
 
 export const NPC_PRICE_MULTIPLIER: Record<NpcType, { iron: number; copper: number }> = {
@@ -176,7 +185,16 @@ export const NPC_PRICE_MULTIPLIER: Record<NpcType, { iron: number; copper: numbe
   mage: { iron: 0.75, copper: 1.5 },
   collector: { iron: 1.25, copper: 1.25 },
   merchant: { iron: 1.0, copper: 1.0 },
+  king: { iron: 4.0, copper: 4.0 },  // Used for display, actual calc uses totalValue
 };
+
+// King NPC constants
+export const KING_SPAWN_CHANCE = 0.02;     // 2% when eligible
+export const KING_MIN_TICK = 100;          // Can't spawn before tick 100
+export const KING_COOLDOWN_TICKS = 50;     // Min ticks between King visits
+export const KING_PRICE_MULTIPLIER = 4.0;  // 4x base prices
+export const KING_PENALTY_DURATION = 30;   // Ticks of reduced spawns
+export const KING_PENALTY_MULTIPLIER = 0.25; // 25% spawn rate during penalty
 
 // === IDLE GAME TYPES ===
 
@@ -208,7 +226,7 @@ export type UpgradeId =
   | "extended_storage"
   | "patient_customers"
   | "premium_pricing"
-  | "auto_belt" | "auto_recipe" | "automation_mastery"
+  | "auto_recipe" | "automation_mastery"
   | "warehouse_efficiency"
   | "map_expansion";
 
@@ -280,18 +298,18 @@ export const PRESTIGE_UPGRADES: Record<PrestigeUpgradeId, PrestigeUpgrade> = {
   merchant_favor: {
     id: "merchant_favor",
     name: "Merchant Favor",
-    description: "+10% sell prices per level",
+    description: "+5% sell prices per level",
     maxLevel: 10,
     costPerLevel: 5,
-    effect: (level) => 1 + level * 0.10,
+    effect: (level) => 1 + level * 0.05,
   },
   inheritance: {
     id: "inheritance",
     name: "Inheritance",
-    description: "+200 starting currency per level",
+    description: "+500 starting currency per level",
     maxLevel: 5,
     costPerLevel: 10,
-    effect: (level) => level * 200,
+    effect: (level) => level * 500,
   },
   tireless_workers: {
     id: "tireless_workers",
@@ -326,7 +344,7 @@ export const OFFLINE_CONFIG = {
 };
 
 // Save version for migration
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 // API payloads
 export interface PlaceBuildingRequest {

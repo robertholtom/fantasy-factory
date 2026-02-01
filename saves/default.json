@@ -1,9 +1,9 @@
 {
-  "version": 2,
+  "version": 3,
   "playerId": "default",
   "state": {
-    "tick": 170,
-    "currency": 70,
+    "tick": 25,
+    "currency": 126,
     "inventory": {
       "iron_ore": 0,
       "iron_bar": 0,
@@ -16,20 +16,20 @@
     },
     "buildings": [
       {
-        "id": "building-1769929034951-0mq7",
+        "id": "building-1769931526955-9hmo",
         "type": "miner",
         "position": {
-          "x": 2,
-          "y": 2
+          "x": 11,
+          "y": 17
         },
-        "progress": 0.75,
+        "progress": 0.5,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
-          "copper_ore": 40,
+          "copper_ore": 0,
           "copper_bar": 0,
           "wand": 0,
           "magic_powder": 0
@@ -38,20 +38,20 @@
         "npcQueue": []
       },
       {
-        "id": "building-1769929035962-u4gw",
+        "id": "building-1769931527966-yd19",
         "type": "smelter",
         "position": {
-          "x": 3,
-          "y": 2
+          "x": 12,
+          "y": 17
         },
-        "progress": 0,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
-          "copper_ore": 0,
+          "copper_ore": 3,
           "copper_bar": 0,
           "wand": 0,
           "magic_powder": 0
@@ -60,13 +60,13 @@
         "npcQueue": []
       },
       {
-        "id": "building-1769929036966-z4y3",
+        "id": "building-1769931528978-yvvn",
         "type": "forger",
         "position": {
-          "x": 4,
-          "y": 2
+          "x": 12,
+          "y": 18
         },
-        "progress": 0,
+        "progress": 0.3333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -74,19 +74,19 @@
           "dagger": 0,
           "armour": 0,
           "copper_ore": 0,
-          "copper_bar": 0,
+          "copper_bar": 2,
           "wand": 0,
           "magic_powder": 0
         },
-        "recipe": "dagger",
+        "recipe": "wand",
         "npcQueue": []
       },
       {
-        "id": "building-1769929037966-ocai",
+        "id": "building-1769931529988-3zax",
         "type": "shop",
         "position": {
-          "x": 5,
-          "y": 2
+          "x": 13,
+          "y": 18
         },
         "progress": 0,
         "constructionProgress": 1,
@@ -103,93 +103,20 @@
         "recipe": "dagger",
         "npcQueue": [
           {
-            "id": "npc-1769929179435-yiuu",
-            "npcType": "warrior",
-            "wantedItem": "armour",
-            "patienceLeft": 1,
-            "maxPatience": 24
-          },
-          {
-            "id": "npc-1769929194600-zu70",
-            "npcType": "collector",
-            "wantedItem": "wand",
-            "patienceLeft": 15,
+            "id": "npc-1769931532010-8pb4",
+            "npcType": "mage",
+            "wantedItem": "magic_powder",
+            "patienceLeft": 3,
             "maxPatience": 23
           }
         ]
       },
       {
-        "id": "building-1769929038967-3n53",
+        "id": "building-1769931531000-vwjr",
         "type": "miner",
         "position": {
-          "x": 7,
-          "y": 0
-        },
-        "progress": 0,
-        "constructionProgress": 1,
-        "storage": {
-          "iron_ore": 53,
-          "iron_bar": 0,
-          "dagger": 0,
-          "armour": 0,
-          "copper_ore": 0,
-          "copper_bar": 0,
-          "wand": 0,
-          "magic_powder": 0
-        },
-        "recipe": "dagger",
-        "npcQueue": []
-      },
-      {
-        "id": "building-1769929038967-4u5y",
-        "type": "smelter",
-        "position": {
-          "x": 8,
-          "y": 0
-        },
-        "progress": 0,
-        "constructionProgress": 1,
-        "storage": {
-          "iron_ore": 0,
-          "iron_bar": 0,
-          "dagger": 0,
-          "armour": 0,
-          "copper_ore": 0,
-          "copper_bar": 0,
-          "wand": 0,
-          "magic_powder": 0
-        },
-        "recipe": "dagger",
-        "npcQueue": []
-      },
-      {
-        "id": "building-1769929038967-h2i0",
-        "type": "forger",
-        "position": {
-          "x": 9,
-          "y": 0
-        },
-        "progress": 0,
-        "constructionProgress": 1,
-        "storage": {
-          "iron_ore": 0,
-          "iron_bar": 0,
-          "dagger": 0,
-          "armour": 0,
-          "copper_ore": 0,
-          "copper_bar": 0,
-          "wand": 0,
-          "magic_powder": 0
-        },
-        "recipe": "dagger",
-        "npcQueue": []
-      },
-      {
-        "id": "building-1769929039967-jrci",
-        "type": "miner",
-        "position": {
-          "x": 0,
-          "y": 6
+          "x": 13,
+          "y": 17
         },
         "progress": 0.5,
         "constructionProgress": 1,
@@ -198,7 +125,7 @@
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
-          "copper_ore": 39,
+          "copper_ore": 0,
           "copper_bar": 0,
           "wand": 0,
           "magic_powder": 0
@@ -207,16 +134,38 @@
         "npcQueue": []
       },
       {
-        "id": "building-1769929039967-babe",
+        "id": "building-1769931532010-moj3",
+        "type": "miner",
+        "position": {
+          "x": 11,
+          "y": 11
+        },
+        "progress": 0.6666666666666666,
+        "constructionProgress": 1,
+        "storage": {
+          "iron_ore": 0,
+          "iron_bar": 0,
+          "dagger": 0,
+          "armour": 0,
+          "copper_ore": 0,
+          "copper_bar": 0,
+          "wand": 0,
+          "magic_powder": 0
+        },
+        "recipe": "dagger",
+        "npcQueue": []
+      },
+      {
+        "id": "building-1769931532010-8egz",
         "type": "smelter",
         "position": {
-          "x": 1,
-          "y": 6
+          "x": 12,
+          "y": 11
         },
-        "progress": 0,
+        "progress": 0.2,
         "constructionProgress": 1,
         "storage": {
-          "iron_ore": 0,
+          "iron_ore": 5,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
@@ -229,13 +178,35 @@
         "npcQueue": []
       },
       {
-        "id": "building-1769929039967-n1x6",
+        "id": "building-1769931532010-rkrk",
         "type": "forger",
         "position": {
-          "x": 2,
-          "y": 6
+          "x": 13,
+          "y": 11
         },
         "progress": 0,
+        "constructionProgress": 1,
+        "storage": {
+          "iron_ore": 0,
+          "iron_bar": 1,
+          "dagger": 0,
+          "armour": 0,
+          "copper_ore": 0,
+          "copper_bar": 0,
+          "wand": 0,
+          "magic_powder": 0
+        },
+        "recipe": "dagger",
+        "npcQueue": []
+      },
+      {
+        "id": "building-1769931533021-7ajd",
+        "type": "miner",
+        "position": {
+          "x": 10,
+          "y": 8
+        },
+        "progress": 0.3333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -247,166 +218,201 @@
           "wand": 0,
           "magic_powder": 0
         },
-        "recipe": "wand",
+        "recipe": "dagger",
         "npcQueue": []
       }
     ],
-    "belts": [],
+    "belts": [
+      {
+        "id": "belt-1769931527966-5li9",
+        "from": {
+          "x": 11,
+          "y": 17
+        },
+        "to": {
+          "x": 12,
+          "y": 17
+        },
+        "itemsInTransit": []
+      },
+      {
+        "id": "belt-1769931528978-oxt5",
+        "from": {
+          "x": 12,
+          "y": 17
+        },
+        "to": {
+          "x": 12,
+          "y": 18
+        },
+        "itemsInTransit": []
+      },
+      {
+        "id": "belt-1769931529988-3jk4",
+        "from": {
+          "x": 12,
+          "y": 18
+        },
+        "to": {
+          "x": 13,
+          "y": 18
+        },
+        "itemsInTransit": []
+      },
+      {
+        "id": "belt-1769931531000-ngvs",
+        "from": {
+          "x": 13,
+          "y": 17
+        },
+        "to": {
+          "x": 12,
+          "y": 17
+        },
+        "itemsInTransit": []
+      },
+      {
+        "id": "belt-1769931532010-ibc7",
+        "from": {
+          "x": 11,
+          "y": 11
+        },
+        "to": {
+          "x": 12,
+          "y": 11
+        },
+        "itemsInTransit": []
+      },
+      {
+        "id": "belt-1769931532010-99e0",
+        "from": {
+          "x": 12,
+          "y": 11
+        },
+        "to": {
+          "x": 13,
+          "y": 11
+        },
+        "itemsInTransit": []
+      },
+      {
+        "id": "belt-1769931532010-gu4m",
+        "from": {
+          "x": 13,
+          "y": 11
+        },
+        "to": {
+          "x": 13,
+          "y": 18
+        },
+        "itemsInTransit": [
+          {
+            "itemType": "dagger",
+            "progress": 0
+          }
+        ]
+      },
+      {
+        "id": "belt-1769931533021-qvcv",
+        "from": {
+          "x": 10,
+          "y": 8
+        },
+        "to": {
+          "x": 12,
+          "y": 11
+        },
+        "itemsInTransit": [
+          {
+            "itemType": "iron_ore",
+            "progress": 0.5
+          }
+        ]
+      }
+    ],
     "oreNodes": [
       {
         "id": "ore-0",
         "position": {
-          "x": 2,
-          "y": 2
+          "x": 11,
+          "y": 17
         },
         "type": "copper"
       },
       {
         "id": "ore-1",
         "position": {
-          "x": 2,
-          "y": 19
+          "x": 26,
+          "y": 9
         },
-        "type": "copper"
+        "type": "iron"
       },
       {
         "id": "ore-2",
         "position": {
-          "x": 18,
-          "y": 12
+          "x": 1,
+          "y": 19
         },
-        "type": "copper"
+        "type": "iron"
       },
       {
         "id": "ore-3",
         "position": {
-          "x": 0,
-          "y": 13
+          "x": 29,
+          "y": 3
         },
         "type": "iron"
       },
       {
         "id": "ore-4",
         "position": {
-          "x": 27,
-          "y": 17
+          "x": 15,
+          "y": 4
         },
         "type": "iron"
       },
       {
         "id": "ore-5",
         "position": {
-          "x": 0,
-          "y": 6
+          "x": 13,
+          "y": 17
         },
         "type": "copper"
       },
       {
         "id": "ore-6",
         "position": {
-          "x": 22,
-          "y": 16
+          "x": 27,
+          "y": 12
         },
         "type": "iron"
       },
       {
         "id": "ore-7",
         "position": {
-          "x": 9,
-          "y": 19
-        },
-        "type": "copper"
-      },
-      {
-        "id": "ore-8",
-        "position": {
-          "x": 27,
-          "y": 19
+          "x": 16,
+          "y": 2
         },
         "type": "iron"
       },
       {
+        "id": "ore-8",
+        "position": {
+          "x": 19,
+          "y": 0
+        },
+        "type": "copper"
+      },
+      {
         "id": "ore-9",
         "position": {
-          "x": 24,
-          "y": 7
+          "x": 23,
+          "y": 17
         },
         "type": "copper"
       },
       {
         "id": "ore-10",
-        "position": {
-          "x": 16,
-          "y": 3
-        },
-        "type": "copper"
-      },
-      {
-        "id": "ore-11",
-        "position": {
-          "x": 8,
-          "y": 13
-        },
-        "type": "iron"
-      },
-      {
-        "id": "ore-12",
-        "position": {
-          "x": 25,
-          "y": 17
-        },
-        "type": "iron"
-      },
-      {
-        "id": "ore-13",
-        "position": {
-          "x": 14,
-          "y": 0
-        },
-        "type": "copper"
-      },
-      {
-        "id": "ore-14",
-        "position": {
-          "x": 2,
-          "y": 8
-        },
-        "type": "copper"
-      },
-      {
-        "id": "ore-15",
-        "position": {
-          "x": 29,
-          "y": 13
-        },
-        "type": "copper"
-      },
-      {
-        "id": "ore-16",
-        "position": {
-          "x": 20,
-          "y": 9
-        },
-        "type": "iron"
-      },
-      {
-        "id": "ore-17",
-        "position": {
-          "x": 7,
-          "y": 0
-        },
-        "type": "iron"
-      },
-      {
-        "id": "ore-18",
-        "position": {
-          "x": 29,
-          "y": 1
-        },
-        "type": "copper"
-      },
-      {
-        "id": "ore-19",
         "position": {
           "x": 10,
           "y": 8
@@ -414,78 +420,144 @@
         "type": "iron"
       },
       {
-        "id": "ore-20",
+        "id": "ore-11",
         "position": {
-          "x": 19,
+          "x": 7,
+          "y": 4
+        },
+        "type": "iron"
+      },
+      {
+        "id": "ore-12",
+        "position": {
+          "x": 11,
+          "y": 11
+        },
+        "type": "iron"
+      },
+      {
+        "id": "ore-13",
+        "position": {
+          "x": 3,
+          "y": 17
+        },
+        "type": "iron"
+      },
+      {
+        "id": "ore-14",
+        "position": {
+          "x": 10,
           "y": 2
         },
         "type": "iron"
       },
       {
+        "id": "ore-15",
+        "position": {
+          "x": 5,
+          "y": 1
+        },
+        "type": "copper"
+      },
+      {
+        "id": "ore-16",
+        "position": {
+          "x": 26,
+          "y": 7
+        },
+        "type": "copper"
+      },
+      {
+        "id": "ore-17",
+        "position": {
+          "x": 2,
+          "y": 17
+        },
+        "type": "copper"
+      },
+      {
+        "id": "ore-18",
+        "position": {
+          "x": 15,
+          "y": 0
+        },
+        "type": "copper"
+      },
+      {
+        "id": "ore-19",
+        "position": {
+          "x": 28,
+          "y": 8
+        },
+        "type": "copper"
+      },
+      {
+        "id": "ore-20",
+        "position": {
+          "x": 0,
+          "y": 7
+        },
+        "type": "copper"
+      },
+      {
         "id": "ore-21",
         "position": {
-          "x": 14,
-          "y": 13
+          "x": 23,
+          "y": 1
         },
         "type": "copper"
       },
       {
         "id": "ore-22",
         "position": {
-          "x": 15,
-          "y": 16
+          "x": 19,
+          "y": 13
         },
-        "type": "copper"
+        "type": "iron"
       },
       {
         "id": "ore-23",
         "position": {
-          "x": 15,
-          "y": 5
+          "x": 2,
+          "y": 8
         },
         "type": "iron"
       },
       {
         "id": "ore-24",
         "position": {
-          "x": 18,
-          "y": 11
-        },
-        "type": "copper"
-      },
-      {
-        "id": "ore-25",
-        "position": {
-          "x": 13,
-          "y": 13
+          "x": 26,
+          "y": 5
         },
         "type": "iron"
       },
       {
-        "id": "ore-26",
+        "id": "ore-25",
         "position": {
-          "x": 19,
-          "y": 15
+          "x": 25,
+          "y": 14
         },
         "type": "copper"
       },
       {
-        "id": "ore-27",
+        "id": "ore-26",
         "position": {
-          "x": 19,
-          "y": 4
+          "x": 14,
+          "y": 2
         },
         "type": "iron"
       }
     ],
     "mapWidth": 30,
     "mapHeight": 20,
-    "geologistExplorer": null
+    "geologistExplorer": null,
+    "kingPenaltyTicksLeft": 0,
+    "lastKingTick": 0
   },
   "meta": {
-    "lastTickAt": 1769929201680,
-    "totalCurrencyEarned": 0,
-    "totalItemsProduced": 132
+    "lastTickAt": 1769931551206,
+    "totalCurrencyEarned": 31,
+    "totalItemsProduced": 1735
   },
   "prestige": {
     "starEssence": 6,
@@ -518,5 +590,5 @@
     "useROICalculations": true,
     "saveForBetterOptions": true
   },
-  "savedAt": 1769929201680
+  "savedAt": 1769931551206
 }

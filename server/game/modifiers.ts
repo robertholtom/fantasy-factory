@@ -4,6 +4,8 @@ import {
   UpgradeId,
   PRESTIGE_UPGRADES,
   PrestigeUpgradeId,
+  GameState,
+  KING_PENALTY_MULTIPLIER,
 } from "../../shared/types.js";
 
 export interface Modifiers {
@@ -15,6 +17,7 @@ export interface Modifiers {
   sellPrice: number;            // Multiplier for sell prices
   storageCapacity: number;      // Added storage slots
   npcPatience: number;          // Multiplier for NPC patience
+  npcSpawnChance: number;       // Multiplier for NPC spawn rate
   offlineEfficiency: number;    // Multiplier for offline progress
   startingCurrency: number;     // Bonus starting currency
   mapExpansion: number;         // Added map size
@@ -34,14 +37,13 @@ const UPGRADE_EFFECTS: Record<UpgradeId, (m: Modifiers) => void> = {
   extended_storage: (m) => { m.storageCapacity += 2; },
   patient_customers: (m) => { m.npcPatience *= 1.20; },
   premium_pricing: (m) => { m.sellPrice *= 1.15; },
-  auto_belt: (m) => { /* Unlocks auto-belt in automation */ },
   auto_recipe: (m) => { /* Unlocks auto-recipe in automation */ },
   automation_mastery: (m) => { /* Unlocks full auto-play */ },
   warehouse_efficiency: (m) => { m.sellPrice *= 1.10; }, // Better wholesale prices
   map_expansion: (m) => { m.mapExpansion += 10; },
 };
 
-export function getModifiers(upgrades: UpgradeState, prestige: PrestigeData): Modifiers {
+export function getModifiers(upgrades: UpgradeState, prestige: PrestigeData, state?: GameState): Modifiers {
   // Start with base modifiers
   const m: Modifiers = {
     productionSpeed: 1,
@@ -52,6 +54,7 @@ export function getModifiers(upgrades: UpgradeState, prestige: PrestigeData): Mo
     sellPrice: 1,
     storageCapacity: 0,
     npcPatience: 1,
+    npcSpawnChance: 1,
     offlineEfficiency: 1,
     startingCurrency: 0,
     mapExpansion: 0,
@@ -77,14 +80,17 @@ export function getModifiers(upgrades: UpgradeState, prestige: PrestigeData): Mo
   m.smeltingSpeed *= m.productionSpeed;
   m.forgingSpeed *= m.productionSpeed;
 
+  // Apply King penalty to NPC spawn chance
+  if (state && state.kingPenaltyTicksLeft > 0) {
+    m.npcSpawnChance *= KING_PENALTY_MULTIPLIER;
+  }
+
   return m;
 }
 
 // Check if an automation feature is unlocked
-export function isAutomationUnlocked(upgrades: UpgradeState, feature: "autoBelt" | "autoRecipe" | "fullAuto"): boolean {
+export function isAutomationUnlocked(upgrades: UpgradeState, feature: "autoRecipe" | "fullAuto"): boolean {
   switch (feature) {
-    case "autoBelt":
-      return upgrades.purchased.includes("auto_belt");
     case "autoRecipe":
       return upgrades.purchased.includes("auto_recipe");
     case "fullAuto":

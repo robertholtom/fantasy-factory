@@ -190,6 +190,12 @@ function migrateSave(save: GameSave): void {
     save.automation.saveForBetterOptions ??= false;
   }
 
+  if (save.version < 3) {
+    // Add King NPC fields
+    save.state.kingPenaltyTicksLeft ??= 0;
+    save.state.lastKingTick ??= 0;
+  }
+
   save.version = SAVE_VERSION;
 }
 

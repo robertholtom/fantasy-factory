@@ -30,6 +30,8 @@ function makeState(overrides?: Partial<GameState>): GameState {
     mapWidth: 30,
     mapHeight: 20,
     geologistExplorer: null,
+    kingPenaltyTicksLeft: 0,
+    lastKingTick: 0,
     ...overrides,
   };
 }
@@ -53,8 +55,8 @@ function enableFullAutomation(): void {
     reserveCurrency: 50,
   };
   setAutomation(settings);
-  // Enable upgrades required for belt and recipe automation
-  setUpgrades({ purchased: ["auto_belt", "auto_recipe"] });
+  // Enable upgrades required for recipe automation
+  setUpgrades({ purchased: ["auto_recipe"] });
 }
 
 function tickN(n: number): void {

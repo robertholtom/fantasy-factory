@@ -424,7 +424,7 @@ export function runAutomation(state: GameState): void {
   const reserved = new Set<string>();
   state.buildings.forEach(b => reserved.add(posKey(b.position)));
 
-  const canAutoBelt = settings.autoPlaceBelt && isAutomationUnlocked(upgrades, "autoBelt");
+  const canAutoBelt = settings.autoPlaceBelt;
 
   // === ROI-BASED DECISION MAKING ===
   if (settings.useROICalculations) {

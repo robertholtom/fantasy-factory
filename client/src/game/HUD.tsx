@@ -14,6 +14,8 @@ import {
   PRESTIGE_UPGRADES,
   PrestigeUpgradeId,
   UpgradeId,
+  Npc,
+  SELL_PRICES,
 } from "../../../shared/types";
 import { ITEM_ICONS } from "./icons";
 import { PlacementMode } from "./GameCanvas";
@@ -186,6 +188,35 @@ export default function HUD({
           })()}
         </div>
       </div>
+
+      {state.kingPenaltyTicksLeft > 0 && (
+        <div className="hud-section penalty-warning">
+          <strong>Bad Publicity!</strong>
+          <p>{state.kingPenaltyTicksLeft} ticks remaining (25% NPC spawns)</p>
+        </div>
+      )}
+
+      {(() => {
+        const shops = state.buildings.filter(b => b.type === "shop");
+        const allNpcs = shops.flatMap(s => s.npcQueue);
+        const king = allNpcs.find(n => n.npcType === "king");
+        if (!king || !king.kingDemand) return null;
+        return (
+          <div className="hud-section king-section">
+            <h3>The King</h3>
+            <div className="king-demand">
+              <p><strong>Demands:</strong></p>
+              {king.kingDemand.items.map(({ item, quantity }) => (
+                <div key={item} className="demand-item">
+                  {quantity}x {item.replace("_", " ")}
+                </div>
+              ))}
+              <p className="king-reward">Reward: ${Math.round(king.kingDemand.totalValue)}</p>
+              <p className="king-patience">Patience: {king.patienceLeft}/{king.maxPatience}</p>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="hud-section">
         <h3>Buy Buildings</h3>
@@ -426,7 +457,6 @@ export default function HUD({
   const renderAutomationTab = () => {
     if (!localAutomation) return <div className="hud-section">Loading...</div>;
 
-    const hasAutoBelt = upgrades?.purchased.includes("auto_belt") ?? false;
     const hasAutoRecipe = upgrades?.purchased.includes("auto_recipe") ?? false;
 
     const toggle = async (key: keyof AutomationSettings) => {
@@ -532,9 +562,9 @@ export default function HUD({
               type="checkbox"
               checked={localAutomation.autoPlaceBelt}
               onChange={() => toggle("autoPlaceBelt")}
-              disabled={!localAutomation.enabled || !hasAutoBelt}
+              disabled={!localAutomation.enabled}
             />
-            Auto Belts {!hasAutoBelt && "(Unlock)"}
+            Auto Belts
           </label>
         </div>
 

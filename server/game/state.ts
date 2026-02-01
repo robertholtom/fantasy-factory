@@ -60,6 +60,8 @@ export function createInitialState(): GameState {
     mapWidth: MAP_WIDTH,
     mapHeight: MAP_HEIGHT,
     geologistExplorer: null,
+    kingPenaltyTicksLeft: 0,
+    lastKingTick: 0,
   };
 }
 

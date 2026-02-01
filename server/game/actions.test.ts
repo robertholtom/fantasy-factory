@@ -24,6 +24,8 @@ function makeState(overrides?: Partial<GameState>): GameState {
     mapWidth: 30,
     mapHeight: 20,
     geologistExplorer: null,
+    kingPenaltyTicksLeft: 0,
+    lastKingTick: 0,
     ...overrides,
   };
 }

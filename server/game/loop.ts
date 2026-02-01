@@ -4,6 +4,8 @@ import {
   Position,
   GameState,
   GeologistExplorer,
+  Inventory,
+  KingDemand,
   MINER_TICKS,
   SMELT_TICKS,
   SMELT_ORE_COST,
@@ -26,8 +28,13 @@ import {
   GEOLOGIST_UPKEEP,
   GEOLOGIST_DISCOVERY_TICKS_MIN,
   GEOLOGIST_DISCOVERY_TICKS_MAX,
+  KING_SPAWN_CHANCE,
+  KING_MIN_TICK,
+  KING_COOLDOWN_TICKS,
+  KING_PRICE_MULTIPLIER,
+  KING_PENALTY_DURATION,
 } from "../../shared/types.js";
-import { getState, getUpgrades, getPrestige, getAutomation, tickAutoSave, updateMetaStats } from "./state.js";
+import { getState, getUpgrades, getPrestige, getAutomation, tickAutoSave, updateMetaStats, getMeta } from "./state.js";
 import { getModifiers } from "./modifiers.js";
 import { runAutomation } from "./automation.js";
 
@@ -41,8 +48,13 @@ function tick(): void {
   const state = getState();
   state.tick++;
 
-  // Get modifiers from upgrades and prestige
-  const modifiers = getModifiers(getUpgrades(), getPrestige());
+  // Decrement King penalty
+  if (state.kingPenaltyTicksLeft > 0) {
+    state.kingPenaltyTicksLeft--;
+  }
+
+  // Get modifiers from upgrades and prestige (pass state for King penalty)
+  const modifiers = getModifiers(getUpgrades(), getPrestige(), state);
   let currencyEarnedThisTick = 0;
   let itemsProducedThisTick = 0;
 
@@ -151,16 +163,35 @@ function tick(): void {
   }
 
   // 3. Shop NPC processing
+  const meta = getMeta();
   for (const building of state.buildings) {
     if (building.type !== "shop") continue;
 
-    // Spawn: if queue < max and random chance
-    if (building.npcQueue.length < NPC_MAX_QUEUE && Math.random() < NPC_SPAWN_CHANCE) {
+    // Try to spawn King first (separate from normal NPCs)
+    trySpawnKing(state, building, modifiers.npcPatience);
+
+    // Spawn normal NPCs: if queue < max and random chance (affected by penalty)
+    const effectiveSpawnChance = NPC_SPAWN_CHANCE * modifiers.npcSpawnChance;
+    if (building.npcQueue.length < NPC_MAX_QUEUE && Math.random() < effectiveSpawnChance) {
       building.npcQueue.push(spawnNpc(modifiers.npcPatience));
     }
 
     // Fulfill: serve NPCs whose wanted item is in shop storage
     building.npcQueue = building.npcQueue.filter((npc) => {
+      // Handle King NPCs specially
+      if (npc.npcType === "king" && npc.kingDemand) {
+        if (canFulfillKingDemand(building.storage, npc.kingDemand)) {
+          fulfillKingDemand(building.storage, npc.kingDemand);
+          const earned = Math.round(npc.kingDemand.totalValue * modifiers.sellPrice);
+          state.currency += earned;
+          currencyEarnedThisTick += earned;
+          meta.totalCurrencyEarned += earned;
+          return false; // King leaves after being served
+        }
+        return true; // King stays
+      }
+
+      // Normal NPC handling
       if (building.storage[npc.wantedItem] > 0) {
         building.storage[npc.wantedItem] -= 1;
         const basePrice = SELL_PRICES[npc.wantedItem];
@@ -179,7 +210,14 @@ function tick(): void {
     // Patience: tick down and remove timed-out NPCs
     building.npcQueue = building.npcQueue.filter((npc) => {
       npc.patienceLeft -= 1;
-      return npc.patienceLeft > 0;
+      if (npc.patienceLeft <= 0) {
+        // King leaving triggers penalty
+        if (npc.npcType === "king") {
+          state.kingPenaltyTicksLeft = KING_PENALTY_DURATION;
+        }
+        return false;
+      }
+      return true;
     });
   }
 
@@ -364,6 +402,64 @@ function spawnNpc(patienceMultiplier = 1): Npc {
     patienceLeft: patience,
     maxPatience: patience,
   };
+}
+
+function generateKingDemand(tick: number): KingDemand {
+  const isLateGame = tick > 500;
+  const numTypes = isLateGame ? randomInt(3, 4) : randomInt(2, 3);
+  const items: { item: FinishedGood; quantity: number }[] = [];
+
+  const shuffled = [...FINISHED_GOODS].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < numTypes; i++) {
+    items.push({
+      item: shuffled[i],
+      quantity: isLateGame ? randomInt(2, 3) : randomInt(1, 2),
+    });
+  }
+
+  const totalValue = items.reduce((sum, { item, quantity }) => {
+    return sum + SELL_PRICES[item] * quantity * KING_PRICE_MULTIPLIER;
+  }, 0);
+
+  return { items, totalValue };
+}
+
+function trySpawnKing(state: GameState, shop: Building, patienceMultiplier: number): boolean {
+  // Eligibility checks
+  if (state.tick < KING_MIN_TICK) return false;
+  if (state.tick - state.lastKingTick < KING_COOLDOWN_TICKS) return false;
+  if (state.kingPenaltyTicksLeft > 0) return false;
+  if (shop.npcQueue.length >= NPC_MAX_QUEUE) return false;
+  if (shop.npcQueue.some(n => n.npcType === "king")) return false;
+
+  if (Math.random() < KING_SPAWN_CHANCE) {
+    const demand = generateKingDemand(state.tick);
+    const [minP, maxP] = NPC_PATIENCE.king;
+    const patience = Math.floor(randomInt(minP, maxP) * patienceMultiplier);
+
+    shop.npcQueue.push({
+      id: `king-${Date.now()}`,
+      npcType: "king",
+      wantedItem: "dagger",  // Unused for king
+      kingDemand: demand,
+      patienceLeft: patience,
+      maxPatience: patience,
+    });
+
+    state.lastKingTick = state.tick;
+    return true;
+  }
+  return false;
+}
+
+function canFulfillKingDemand(storage: Inventory, demand: KingDemand): boolean {
+  return demand.items.every(({ item, quantity }) => storage[item] >= quantity);
+}
+
+function fulfillKingDemand(storage: Inventory, demand: KingDemand): void {
+  for (const { item, quantity } of demand.items) {
+    storage[item] -= quantity;
+  }
 }
 
 

@@ -16,7 +16,7 @@ export function calculateStarEssence(totalCurrencyEarned: number): number {
   if (totalCurrencyEarned < MIN_PRESTIGE_CURRENCY) {
     return 0;
   }
-  return Math.floor(Math.sqrt(totalCurrencyEarned / 10000));
+  return Math.floor(Math.sqrt(totalCurrencyEarned / 1000));
 }
 
 // Check if player can prestige
