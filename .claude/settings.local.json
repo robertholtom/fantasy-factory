@@ -6,7 +6,10 @@
       "Bash(npm run dev:*)",
       "Bash(npx kill-port:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run test:*)"
     ]
   }
 }

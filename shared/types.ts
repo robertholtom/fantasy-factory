@@ -87,7 +87,7 @@ export interface GameState {
   oreNodes: OreNode[];
   mapWidth: number;
   mapHeight: number;
-  aiMode: boolean;
+  geologistExplorer: GeologistExplorer | null; // Animated character when geologist building exists
 }
 
 export const BUILDING_COSTS: Record<BuildingType, number> = {
@@ -100,13 +100,22 @@ export const BUILDING_COSTS: Record<BuildingType, number> = {
 };
 
 // Geologist building settings
-export const GEOLOGIST_UPKEEP = 5; // Cost per tick to operate
-export const GEOLOGIST_DISCOVERY_TICKS = 15; // Ticks between discoveries
+export const GEOLOGIST_UPKEEP = 2; // Cost per tick to operate
+export const GEOLOGIST_DISCOVERY_TICKS_MIN = 10; // Minimum ticks between discoveries
+export const GEOLOGIST_DISCOVERY_TICKS_MAX = 20; // Maximum ticks between discoveries
 export const GEOLOGIST_MAX_COUNT = 1; // Only one allowed
+
+// Geologist explorer (animated character that walks around)
+export interface GeologistExplorer {
+  position: Position; // Current position (can be fractional for smooth movement)
+  targetPosition: Position; // Where the explorer is heading
+  searchProgress: number; // 0-1, when 1 = found ore at current location
+  ticksUntilDiscovery: number; // Random countdown to next discovery
+}
 
 // Warehouse wholesale settings
 export const WHOLESALE_THRESHOLD = 10; // Minimum items to trigger sale
-export const WHOLESALE_MULTIPLIER = 0.5; // 50% of base price
+export const WHOLESALE_MULTIPLIER = 0.7; // 70% of base price
 
 export const BELT_COST = 5;
 
@@ -124,9 +133,9 @@ export const SMELT_ORE_COST = 2;
 
 export const SELL_PRICES: Record<string, number> = {
   dagger: 20,
-  armour: 30,
+  armour: 40,
   wand: 25,
-  magic_powder: 60,
+  magic_powder: 45,
 };
 
 export const RECIPE_BARS_COST: Record<ForgerRecipe, number> = {
@@ -169,6 +178,156 @@ export const NPC_PRICE_MULTIPLIER: Record<NpcType, { iron: number; copper: numbe
   merchant: { iron: 1.0, copper: 1.0 },
 };
 
+// === IDLE GAME TYPES ===
+
+export interface GameMeta {
+  lastTickAt: number;
+  totalCurrencyEarned: number;
+  totalItemsProduced: number;
+}
+
+export interface PrestigeBonuses {
+  productionSpeed: number;    // Multiplier (1.0 = no bonus)
+  sellPrice: number;          // Multiplier
+  startingCurrency: number;   // Added to base 400
+  offlineEfficiency: number;  // Multiplier
+  beltSpeed: number;          // Multiplier
+}
+
+export interface PrestigeData {
+  starEssence: number;
+  prestigeCount: number;
+  bonuses: PrestigeBonuses;
+}
+
+export type UpgradeId =
+  | "mining_efficiency_1" | "mining_efficiency_2" | "mining_efficiency_3"
+  | "smelting_efficiency_1" | "smelting_efficiency_2"
+  | "forging_efficiency_1" | "forging_efficiency_2"
+  | "belt_maintenance_1" | "express_belts"
+  | "extended_storage"
+  | "patient_customers"
+  | "premium_pricing"
+  | "auto_belt" | "auto_recipe" | "automation_mastery"
+  | "warehouse_efficiency"
+  | "map_expansion";
+
+export interface UpgradeState {
+  purchased: UpgradeId[];
+}
+
+export interface AutomationSettings {
+  enabled: boolean;
+
+  // Building toggles
+  autoPlaceMiner: boolean;
+  autoPlaceSmelter: boolean;
+  autoPlaceForger: boolean;
+  autoPlaceShop: boolean;
+  autoPlaceBelt: boolean;
+  autoPlaceWarehouse: boolean;
+  autoPlaceGeologist: boolean;
+
+  // Strategy
+  autoRecipeSwitch: boolean;
+  useAdvancedRecipeLogic: boolean;
+  buildCompleteChains: boolean;
+  useROICalculations: boolean;
+  saveForBetterOptions: boolean;
+
+  // Settings
+  priorityOreType: "iron" | "copper" | "balanced";
+  reserveCurrency: number;
+}
+
+export interface GameSave {
+  version: number;
+  playerId: string;
+  state: GameState;
+  meta: GameMeta;
+  prestige: PrestigeData;
+  upgrades: UpgradeState;
+  automation: AutomationSettings;
+  savedAt: number;
+}
+
+// Prestige upgrade definitions
+export type PrestigeUpgradeId =
+  | "swift_production"
+  | "merchant_favor"
+  | "inheritance"
+  | "tireless_workers"
+  | "express_belts_prestige";
+
+export interface PrestigeUpgrade {
+  id: PrestigeUpgradeId;
+  name: string;
+  description: string;
+  maxLevel: number;
+  costPerLevel: number;
+  effect: (level: number) => number; // Returns multiplier or bonus value
+}
+
+export const PRESTIGE_UPGRADES: Record<PrestigeUpgradeId, PrestigeUpgrade> = {
+  swift_production: {
+    id: "swift_production",
+    name: "Swift Production",
+    description: "+5% production speed per level",
+    maxLevel: 10,
+    costPerLevel: 5,
+    effect: (level) => 1 + level * 0.05,
+  },
+  merchant_favor: {
+    id: "merchant_favor",
+    name: "Merchant Favor",
+    description: "+10% sell prices per level",
+    maxLevel: 10,
+    costPerLevel: 5,
+    effect: (level) => 1 + level * 0.10,
+  },
+  inheritance: {
+    id: "inheritance",
+    name: "Inheritance",
+    description: "+200 starting currency per level",
+    maxLevel: 5,
+    costPerLevel: 10,
+    effect: (level) => level * 200,
+  },
+  tireless_workers: {
+    id: "tireless_workers",
+    name: "Tireless Workers",
+    description: "+10% offline efficiency per level",
+    maxLevel: 5,
+    costPerLevel: 8,
+    effect: (level) => 1 + level * 0.10,
+  },
+  express_belts_prestige: {
+    id: "express_belts_prestige",
+    name: "Express Belts",
+    description: "+10% belt speed per level",
+    maxLevel: 5,
+    costPerLevel: 6,
+    effect: (level) => 1 + level * 0.10,
+  },
+};
+
+export interface PrestigeUpgradeLevels {
+  swift_production: number;
+  merchant_favor: number;
+  inheritance: number;
+  tireless_workers: number;
+  express_belts_prestige: number;
+}
+
+// Offline progress config
+export const OFFLINE_CONFIG = {
+  maxOfflineHours: 24,
+  baseOfflineEfficiency: 0.5,
+};
+
+// Save version for migration
+export const SAVE_VERSION = 2;
+
 // API payloads
 export interface PlaceBuildingRequest {
   type: BuildingType;
@@ -187,4 +346,32 @@ export interface SetRecipeRequest {
 
 export interface DemolishBuildingRequest {
   buildingId: string;
+}
+
+export interface CreateGameRequest {
+  playerId: string;
+}
+
+export interface LoadGameRequest {
+  playerId: string;
+}
+
+export interface BuyPrestigeUpgradeRequest {
+  upgradeId: PrestigeUpgradeId;
+}
+
+export interface BuyUpgradeRequest {
+  upgradeId: UpgradeId;
+}
+
+export interface UpdateAutomationRequest {
+  settings: Partial<AutomationSettings>;
+}
+
+// Offline progress result
+export interface OfflineProgress {
+  ticksSimulated: number;
+  currencyEarned: number;
+  itemsProduced: Record<ItemType, number>;
+  efficiency: number;
 }

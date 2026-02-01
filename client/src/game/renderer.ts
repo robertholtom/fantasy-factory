@@ -1,4 +1,4 @@
-import { GameState, Belt, Building, OreNode, ItemType, getBeltTravelTime } from "../../../shared/types";
+import { GameState, Belt, Building, OreNode, ItemType, getBeltTravelTime, GeologistExplorer } from "../../../shared/types";
 
 // SVG icons as data URLs
 const ICONS: Record<string, string> = {
@@ -79,6 +79,31 @@ const ICONS: Record<string, string> = {
       <circle cx="22" cy="20" r="2" fill="#e07020"/>
       <rect x="14" y="22" width="4" height="2" fill="#654321"/>
       <path d="M8 26 L24 26 L22 24 L10 24 Z" fill="#4a5a4a"/>
+    </svg>
+  `)}`,
+  geologist_explorer: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <!-- Body -->
+      <ellipse cx="16" cy="24" rx="6" ry="4" fill="#5a4030"/>
+      <!-- Torso -->
+      <rect x="12" y="14" width="8" height="10" rx="2" fill="#6a8050"/>
+      <!-- Head -->
+      <circle cx="16" cy="10" r="6" fill="#ffccaa"/>
+      <!-- Hat (explorer hat) -->
+      <ellipse cx="16" cy="6" rx="8" ry="2" fill="#8b6914"/>
+      <ellipse cx="16" cy="5" rx="5" ry="3" fill="#a08020"/>
+      <rect x="14" y="3" width="4" height="2" fill="#c0a030"/>
+      <!-- Eyes -->
+      <circle cx="14" cy="10" r="1" fill="#333"/>
+      <circle cx="18" cy="10" r="1" fill="#333"/>
+      <!-- Smile -->
+      <path d="M14 13 Q16 15 18 13" stroke="#833" fill="none" stroke-width="1"/>
+      <!-- Pickaxe on back -->
+      <line x1="22" y1="8" x2="26" y2="20" stroke="#654321" stroke-width="2"/>
+      <path d="M24 6 L28 10 L26 12 L22 8 Z" fill="#888"/>
+      <!-- Boots -->
+      <ellipse cx="13" cy="27" rx="3" ry="2" fill="#4a3020"/>
+      <ellipse cx="19" cy="27" rx="3" ry="2" fill="#4a3020"/>
     </svg>
   `)}`,
   ore_iron: `data:image/svg+xml,${encodeURIComponent(`
@@ -357,6 +382,11 @@ export function render(
   // Items moving on belts (draw after buildings so they appear on top)
   for (const belt of state.belts) {
     drawBeltItems(ctx, belt, state, cellSize, animationProgress);
+  }
+
+  // Geologist explorer (animated character walking around)
+  if (state.geologistExplorer) {
+    drawGeologistExplorer(ctx, state.geologistExplorer, cellSize, animationProgress);
   }
 
   // Ghost preview for building placement
@@ -705,5 +735,80 @@ function drawBuilding(
       ctx.fillStyle = barColor;
       ctx.fillRect(npcX, barY, barWidth * patienceRatio, barHeight);
     }
+  }
+}
+
+function drawGeologistExplorer(
+  ctx: CanvasRenderingContext2D,
+  explorer: GeologistExplorer,
+  cellSize: number,
+  animationProgress: number
+): void {
+  const size = cellSize * 0.8;
+
+  // Add a slight bobbing animation while walking
+  const dx = explorer.targetPosition.x - explorer.position.x;
+  const dy = explorer.targetPosition.y - explorer.position.y;
+  const isMoving = Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1;
+  const bobOffset = isMoving ? Math.sin(animationProgress * Math.PI * 4) * 2 : 0;
+
+  // Calculate position (center of cell)
+  const x = explorer.position.x * cellSize + cellSize / 2 - size / 2;
+  const y = explorer.position.y * cellSize + cellSize / 2 - size / 2 + bobOffset;
+
+  // Draw shadow
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.beginPath();
+  ctx.ellipse(x + size / 2, y + size + 2, size / 3, size / 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Draw explorer icon
+  const img = iconImages["geologist_explorer"];
+  if (img && img.complete) {
+    // Flip icon based on movement direction
+    ctx.save();
+    if (dx < -0.1) {
+      ctx.translate(x + size, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0, size, size);
+    } else {
+      ctx.drawImage(img, x, y, size, size);
+    }
+    ctx.restore();
+  } else {
+    // Fallback: simple circle
+    ctx.fillStyle = "#6a8050";
+    ctx.beginPath();
+    ctx.arc(x + size / 2, y + size / 2, size / 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffccaa";
+    ctx.beginPath();
+    ctx.arc(x + size / 2, y + size / 3, size / 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw search indicator (magnifying glass effect when close to finding)
+  if (explorer.searchProgress > 0.5) {
+    const pulseSize = 4 + (explorer.searchProgress - 0.5) * 8;
+    const alpha = 0.3 + (explorer.searchProgress - 0.5) * 0.6;
+    ctx.strokeStyle = `rgba(255, 215, 0, ${alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x + size / 2, y + size / 2, size / 2 + pulseSize, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Draw line to target position (faint dotted line)
+  if (isMoving) {
+    const targetX = explorer.targetPosition.x * cellSize + cellSize / 2;
+    const targetY = explorer.targetPosition.y * cellSize + cellSize / 2;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath();
+    ctx.moveTo(x + size / 2, y + size / 2);
+    ctx.lineTo(targetX, targetY);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 }

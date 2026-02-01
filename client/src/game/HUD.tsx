@@ -1,40 +1,162 @@
-import { GameState, BuildingType, BUILDING_COSTS, BELT_COST, GEOLOGIST_MAX_COUNT, GEOLOGIST_UPKEEP } from "../../../shared/types";
+import { useState, useEffect } from "react";
+import {
+  GameState,
+  BuildingType,
+  BUILDING_COSTS,
+  BELT_COST,
+  GEOLOGIST_MAX_COUNT,
+  GEOLOGIST_UPKEEP,
+  PrestigeData,
+  UpgradeState,
+  AutomationSettings,
+  GameMeta,
+  OfflineProgress,
+  PRESTIGE_UPGRADES,
+  PrestigeUpgradeId,
+  UpgradeId,
+} from "../../../shared/types";
 import { ITEM_ICONS } from "./icons";
 import { PlacementMode } from "./GameCanvas";
+import {
+  getPrestigeInfo,
+  performPrestige,
+  buyPrestigeUpgrade,
+  getUpgradeInfo,
+  buyUpgrade,
+  updateAutomation,
+  applySmartDefaults,
+  PrestigeInfo,
+  UpgradeInfo,
+} from "./api";
 
 interface Props {
   state: GameState | null;
+  meta: GameMeta | null;
+  prestige: PrestigeData | null;
+  upgrades: UpgradeState | null;
+  automation: AutomationSettings | null;
+  offlineProgress: OfflineProgress | null;
   placementMode: PlacementMode;
   error: string | null;
   onBuy: (type: BuildingType) => void;
   onStartBelt: () => void;
   onStartDemolish: () => void;
   onReset: () => void;
-  onToggleAiMode: () => void;
   onCancelPlacement: () => void;
+  onDismissOffline: () => void;
+  onAutomationChange: () => void;
 }
+
+type Tab = "main" | "upgrades" | "prestige" | "automation";
 
 export default function HUD({
   state,
+  meta,
+  prestige,
+  upgrades,
+  automation,
+  offlineProgress,
   placementMode,
   error,
   onBuy,
   onStartBelt,
   onStartDemolish,
   onReset,
-  onToggleAiMode,
   onCancelPlacement,
+  onDismissOffline,
+  onAutomationChange,
 }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>("main");
+  const [prestigeInfo, setPrestigeInfo] = useState<PrestigeInfo | null>(null);
+  const [upgradeInfo, setUpgradeInfo] = useState<UpgradeInfo | null>(null);
+  const [localAutomation, setLocalAutomation] = useState<AutomationSettings | null>(null);
+
+  useEffect(() => {
+    if (activeTab === "prestige") {
+      getPrestigeInfo().then(setPrestigeInfo);
+    } else if (activeTab === "upgrades") {
+      getUpgradeInfo().then(setUpgradeInfo);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (automation) {
+      setLocalAutomation(automation);
+    }
+  }, [automation]);
+
   if (!state) return <div className="hud">Loading...</div>;
 
-  const { currency, inventory } = state;
+  const { currency } = state;
   const inPlacement = placementMode !== null;
 
-  return (
-    <div className="hud">
+  // Offline progress modal
+  if (offlineProgress && offlineProgress.ticksSimulated > 0) {
+    const hours = Math.floor(offlineProgress.ticksSimulated / 3600);
+    const minutes = Math.floor((offlineProgress.ticksSimulated % 3600) / 60);
+
+    return (
+      <div className="hud">
+        <div className="offline-modal">
+          <h2>Welcome Back!</h2>
+          <p>You were away for {hours > 0 ? `${hours}h ` : ""}{minutes}m</p>
+          <p>Efficiency: {Math.round(offlineProgress.efficiency * 100)}%</p>
+          <div className="offline-earnings">
+            <p>Currency earned: ${offlineProgress.currencyEarned}</p>
+            {Object.entries(offlineProgress.itemsProduced)
+              .filter(([, count]) => count > 0)
+              .map(([item, count]) => (
+                <p key={item}>{item}: +{count}</p>
+              ))}
+          </div>
+          <button onClick={onDismissOffline}>Continue</button>
+        </div>
+      </div>
+    );
+  }
+
+  const renderTabs = () => (
+    <div className="hud-tabs">
+      <button
+        className={activeTab === "main" ? "active" : ""}
+        onClick={() => setActiveTab("main")}
+      >
+        Main
+      </button>
+      <button
+        className={activeTab === "upgrades" ? "active" : ""}
+        onClick={() => setActiveTab("upgrades")}
+      >
+        Upgrades
+      </button>
+      <button
+        className={activeTab === "prestige" ? "active" : ""}
+        onClick={() => setActiveTab("prestige")}
+      >
+        Prestige
+      </button>
+      <button
+        className={activeTab === "automation" ? "active" : ""}
+        onClick={() => setActiveTab("automation")}
+      >
+        Auto
+      </button>
+    </div>
+  );
+
+  const renderMainTab = () => (
+    <>
       <div className="hud-section">
         <h2>Fantasy Factory</h2>
         <div className="currency">Currency: ${currency}</div>
+        {meta && (
+          <div className="stats">
+            <small>Total earned: ${meta.totalCurrencyEarned}</small>
+          </div>
+        )}
+        {prestige && prestige.starEssence > 0 && (
+          <div className="star-essence">Star Essence: {prestige.starEssence}</div>
+        )}
       </div>
 
       <div className="hud-section">
@@ -152,40 +274,397 @@ export default function HUD({
         )}
       </div>
 
-      <div className="hud-section">
-        <h3>How to Play</h3>
-        <div className="help-text">
-          <p>1. Place miners on ore nodes</p>
-          <p>&nbsp;&nbsp;Orange = iron, Teal = copper</p>
-          <p>2. Place smelters &amp; forgers</p>
-          <p>3. Connect with belts:</p>
-          <p>&nbsp;&nbsp;Miner → Smelter → Forger</p>
-          <p>4. Click forger to cycle recipe</p>
-          <p>&nbsp;&nbsp;D/A = iron, W/P = copper</p>
-          <p>5. Place shop &amp; belt forger to it</p>
-          <p>6. NPCs arrive to buy goods!</p>
-        </div>
-        <div className="help-text" style={{ marginTop: "0.5rem", borderTop: "1px solid #333", paddingTop: "0.5rem" }}>
-          <p><strong>Controls:</strong></p>
-          <p>Scroll: Zoom in/out</p>
-          <p>Right-drag: Pan view</p>
-        </div>
-      </div>
-
       {error && <div className="error-msg">{error}</div>}
 
       <div className="hud-section">
-        <button
-          className={`ai-mode-btn ${state.aiMode ? "active" : ""}`}
-          onClick={onToggleAiMode}
-          disabled={inPlacement}
-        >
-          AI Mode: {state.aiMode ? "ON" : "OFF"}
-        </button>
         <button className="reset-btn" onClick={onReset}>
           Reset Game
         </button>
       </div>
+    </>
+  );
+
+  const renderUpgradesTab = () => {
+    if (!upgradeInfo) return <div className="hud-section">Loading...</div>;
+
+    return (
+      <div className="hud-section upgrades-panel">
+        <h3>Upgrades</h3>
+        <p className="currency-display">Currency: ${currency}</p>
+
+        {upgradeInfo.available.length === 0 && upgradeInfo.purchased.length === 0 && (
+          <p>No upgrades available yet.</p>
+        )}
+
+        {upgradeInfo.available.map((id) => {
+          const def = upgradeInfo.definitions[id];
+          const canAfford = currency >= def.cost;
+          return (
+            <div key={id} className={`upgrade-item ${canAfford ? "available" : "locked"}`}>
+              <div className="upgrade-header">
+                <span className="upgrade-name">{def.name}</span>
+                <span className="upgrade-cost">${def.cost}</span>
+              </div>
+              <p className="upgrade-desc">{def.description}</p>
+              <button
+                disabled={!canAfford}
+                onClick={async () => {
+                  const result = await buyUpgrade(id);
+                  if (result.success) {
+                    getUpgradeInfo().then(setUpgradeInfo);
+                  }
+                }}
+              >
+                Buy
+              </button>
+            </div>
+          );
+        })}
+
+        {upgradeInfo.purchased.length > 0 && (
+          <>
+            <h4>Purchased</h4>
+            {upgradeInfo.purchased.map((id) => {
+              const def = upgradeInfo.definitions[id];
+              return (
+                <div key={id} className="upgrade-item purchased">
+                  <span className="upgrade-name">{def.name}</span>
+                  <span className="checkmark">✓</span>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderPrestigeTab = () => {
+    if (!prestigeInfo) return <div className="hud-section">Loading...</div>;
+
+    const prestigeUpgradeIds: PrestigeUpgradeId[] = [
+      "swift_production",
+      "merchant_favor",
+      "inheritance",
+      "tireless_workers",
+      "express_belts_prestige",
+    ];
+
+    return (
+      <div className="hud-section prestige-panel">
+        <h3>Prestige</h3>
+        <div className="prestige-stats">
+          <p>Star Essence: {prestigeInfo.starEssence}</p>
+          <p>Times prestiged: {prestigeInfo.prestigeCount}</p>
+        </div>
+
+        <div className="prestige-action">
+          {prestigeInfo.canPrestige ? (
+            <>
+              <p>Prestige now for +{prestigeInfo.potentialEssence} Star Essence</p>
+              <button
+                className="prestige-btn"
+                onClick={async () => {
+                  const result = await performPrestige();
+                  if (result.success) {
+                    getPrestigeInfo().then(setPrestigeInfo);
+                    window.location.reload();
+                  }
+                }}
+              >
+                Prestige
+              </button>
+            </>
+          ) : (
+            <p>Earn $5000+ total to prestige</p>
+          )}
+        </div>
+
+        <h4>Prestige Upgrades</h4>
+        {prestigeUpgradeIds.map((id) => {
+          const upgrade = PRESTIGE_UPGRADES[id];
+          const level = prestigeInfo.upgradeLevels[id];
+          const maxed = level >= upgrade.maxLevel;
+          const canAfford = prestigeInfo.starEssence >= upgrade.costPerLevel;
+
+          return (
+            <div key={id} className={`prestige-upgrade ${maxed ? "maxed" : canAfford ? "available" : "locked"}`}>
+              <div className="upgrade-header">
+                <span className="upgrade-name">{upgrade.name}</span>
+                <span className="upgrade-level">{level}/{upgrade.maxLevel}</span>
+              </div>
+              <p className="upgrade-desc">{upgrade.description}</p>
+              {!maxed && (
+                <button
+                  disabled={!canAfford}
+                  onClick={async () => {
+                    const result = await buyPrestigeUpgrade(id);
+                    if (result.success) {
+                      getPrestigeInfo().then(setPrestigeInfo);
+                    }
+                  }}
+                >
+                  Buy ({upgrade.costPerLevel} SE)
+                </button>
+              )}
+            </div>
+          );
+        })}
+
+        <h4>Current Bonuses</h4>
+        <div className="bonus-list">
+          <p>Production: x{prestigeInfo.bonuses.productionSpeed.toFixed(2)}</p>
+          <p>Sell Price: x{prestigeInfo.bonuses.sellPrice.toFixed(2)}</p>
+          <p>Starting $: +{prestigeInfo.bonuses.startingCurrency}</p>
+          <p>Offline: x{prestigeInfo.bonuses.offlineEfficiency.toFixed(2)}</p>
+          <p>Belt Speed: x{prestigeInfo.bonuses.beltSpeed.toFixed(2)}</p>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAutomationTab = () => {
+    if (!localAutomation) return <div className="hud-section">Loading...</div>;
+
+    const hasAutoBelt = upgrades?.purchased.includes("auto_belt") ?? false;
+    const hasAutoRecipe = upgrades?.purchased.includes("auto_recipe") ?? false;
+
+    const toggle = async (key: keyof AutomationSettings) => {
+      const newValue = !localAutomation[key];
+      const updated = { ...localAutomation, [key]: newValue };
+      setLocalAutomation(updated);
+      await updateAutomation({ [key]: newValue });
+    };
+
+    const setReserve = async (value: number) => {
+      const updated = { ...localAutomation, reserveCurrency: value };
+      setLocalAutomation(updated);
+      await updateAutomation({ reserveCurrency: value });
+    };
+
+    const setPriority = async (value: "iron" | "copper" | "balanced") => {
+      const updated = { ...localAutomation, priorityOreType: value };
+      setLocalAutomation(updated);
+      await updateAutomation({ priorityOreType: value });
+    };
+
+    const handleSmartDefaults = async () => {
+      const result = await applySmartDefaults();
+      setLocalAutomation(result.automation);
+      onAutomationChange();
+    };
+
+    return (
+      <div className="hud-section automation-panel">
+        <h3>Automation</h3>
+
+        <button
+          className="smart-defaults-btn"
+          onClick={handleSmartDefaults}
+        >
+          Smart Defaults
+        </button>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.enabled}
+              onChange={() => toggle("enabled")}
+            />
+            Enable Automation
+          </label>
+        </div>
+
+        <h4>Buildings</h4>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.autoPlaceMiner}
+              onChange={() => toggle("autoPlaceMiner")}
+              disabled={!localAutomation.enabled}
+            />
+            Auto Miners
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.autoPlaceSmelter}
+              onChange={() => toggle("autoPlaceSmelter")}
+              disabled={!localAutomation.enabled}
+            />
+            Auto Smelters
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.autoPlaceForger}
+              onChange={() => toggle("autoPlaceForger")}
+              disabled={!localAutomation.enabled}
+            />
+            Auto Forgers
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.autoPlaceShop ?? false}
+              onChange={() => toggle("autoPlaceShop")}
+              disabled={!localAutomation.enabled}
+            />
+            Auto Shops
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.autoPlaceBelt}
+              onChange={() => toggle("autoPlaceBelt")}
+              disabled={!localAutomation.enabled || !hasAutoBelt}
+            />
+            Auto Belts {!hasAutoBelt && "(Unlock)"}
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.autoPlaceWarehouse ?? false}
+              onChange={() => toggle("autoPlaceWarehouse")}
+              disabled={!localAutomation.enabled}
+            />
+            Auto Warehouses
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.autoPlaceGeologist ?? false}
+              onChange={() => toggle("autoPlaceGeologist")}
+              disabled={!localAutomation.enabled}
+            />
+            Auto Geologists
+          </label>
+        </div>
+
+        <h4>Strategy</h4>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.buildCompleteChains ?? false}
+              onChange={() => toggle("buildCompleteChains")}
+              disabled={!localAutomation.enabled}
+            />
+            Build Complete Chains
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.useROICalculations ?? false}
+              onChange={() => toggle("useROICalculations")}
+              disabled={!localAutomation.enabled}
+            />
+            Use ROI Calculations
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.saveForBetterOptions ?? false}
+              onChange={() => toggle("saveForBetterOptions")}
+              disabled={!localAutomation.enabled}
+            />
+            Save for Better Options
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.useAdvancedRecipeLogic ?? false}
+              onChange={() => toggle("useAdvancedRecipeLogic")}
+              disabled={!localAutomation.enabled || !hasAutoRecipe}
+            />
+            Advanced Recipe Logic {!hasAutoRecipe && "(Unlock)"}
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.autoRecipeSwitch}
+              onChange={() => toggle("autoRecipeSwitch")}
+              disabled={!localAutomation.enabled || !hasAutoRecipe}
+            />
+            Auto Recipe Switch {!hasAutoRecipe && "(Unlock)"}
+          </label>
+        </div>
+
+        <h4>Settings</h4>
+
+        <div className="auto-setting">
+          <label>
+            Priority Ore:
+            <select
+              value={localAutomation.priorityOreType}
+              onChange={(e) => setPriority(e.target.value as "iron" | "copper" | "balanced")}
+              disabled={!localAutomation.enabled}
+            >
+              <option value="balanced">Balanced</option>
+              <option value="iron">Iron</option>
+              <option value="copper">Copper</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="auto-setting">
+          <label>
+            Reserve Currency:
+            <input
+              type="number"
+              value={localAutomation.reserveCurrency}
+              onChange={(e) => setReserve(parseInt(e.target.value) || 0)}
+              disabled={!localAutomation.enabled}
+              min={0}
+              step={50}
+            />
+          </label>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="hud">
+      {renderTabs()}
+      {activeTab === "main" && renderMainTab()}
+      {activeTab === "upgrades" && renderUpgradesTab()}
+      {activeTab === "prestige" && renderPrestigeTab()}
+      {activeTab === "automation" && renderAutomationTab()}
     </div>
   );
 }

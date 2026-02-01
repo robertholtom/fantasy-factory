@@ -1,15 +1,32 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import "./App.css";
-import { GameState, BuildingType, ForgerRecipe } from "../../shared/types";
+import {
+  GameState,
+  BuildingType,
+  ForgerRecipe,
+  GameMeta,
+  PrestigeData,
+  UpgradeState,
+  AutomationSettings,
+  OfflineProgress,
+} from "../../shared/types";
 import * as api from "./game/api";
 import GameCanvas, { PlacementMode } from "./game/GameCanvas";
 import HUD from "./game/HUD";
 
+const PLAYER_ID = "default"; // Simple single-player for now
+
 function App() {
   const [state, setState] = useState<GameState | null>(null);
+  const [meta, setMeta] = useState<GameMeta | null>(null);
+  const [prestige, setPrestige] = useState<PrestigeData | null>(null);
+  const [upgrades, setUpgrades] = useState<UpgradeState | null>(null);
+  const [automation, setAutomation] = useState<AutomationSettings | null>(null);
+  const [offlineProgress, setOfflineProgress] = useState<OfflineProgress | null>(null);
   const [placementMode, setPlacementMode] = useState<PlacementMode>(null);
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const errorTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const showError = (msg: string) => {
@@ -18,13 +35,52 @@ function App() {
     errorTimer.current = setTimeout(() => setError(null), 3000);
   };
 
-  // Poll game state
+  // Load game on startup
   useEffect(() => {
-    const poll = () => api.getGameState().then(setState).catch(() => {});
+    const load = async () => {
+      try {
+        const result = await api.loadGame(PLAYER_ID);
+        if (result.save) {
+          setState(result.save.state);
+          setMeta(result.save.meta);
+          setPrestige(result.save.prestige);
+          setUpgrades(result.save.upgrades);
+          setAutomation(result.save.automation);
+          if (result.offlineProgress && result.offlineProgress.ticksSimulated > 0) {
+            setOfflineProgress(result.offlineProgress);
+          }
+        }
+        setLoaded(true);
+      } catch {
+        // Fallback to regular state polling
+        setLoaded(true);
+      }
+    };
+    load();
+  }, []);
+
+  // Poll game state after initial load
+  useEffect(() => {
+    if (!loaded) return;
+
+    const poll = async () => {
+      try {
+        const fullState = await api.getFullState();
+        setState(fullState.state);
+        setMeta(fullState.meta);
+        setPrestige(fullState.prestige);
+        setUpgrades(fullState.upgrades);
+        setAutomation(fullState.automation);
+      } catch {
+        // Fallback to basic state
+        api.getGameState().then(setState).catch(() => {});
+      }
+    };
+
     poll();
     const id = setInterval(poll, 500);
     return () => clearInterval(id);
-  }, []);
+  }, [loaded]);
 
   const handleBuy = useCallback((type: BuildingType) => {
     setPlacementMode({ kind: "building", buildingType: type });
@@ -123,29 +179,34 @@ function App() {
     setGhostPos(null);
   }, []);
 
-  const handleToggleAiMode = useCallback(async () => {
-    const result = await api.toggleAiMode();
-    if (result.error) {
-      showError(result.error);
-    } else if (result.state) {
-      setState(result.state);
-    }
-    setPlacementMode(null);
-    setGhostPos(null);
+  const handleAutomationChange = useCallback(async () => {
+    // Refresh automation settings
+    const fullState = await api.getFullState();
+    setAutomation(fullState.automation);
+  }, []);
+
+  const handleDismissOffline = useCallback(() => {
+    setOfflineProgress(null);
   }, []);
 
   return (
     <div className="app">
       <HUD
         state={state}
+        meta={meta}
+        prestige={prestige}
+        upgrades={upgrades}
+        automation={automation}
+        offlineProgress={offlineProgress}
         placementMode={placementMode}
         error={error}
         onBuy={handleBuy}
         onStartBelt={handleStartBelt}
         onStartDemolish={handleStartDemolish}
         onReset={handleReset}
-        onToggleAiMode={handleToggleAiMode}
         onCancelPlacement={handleCancelPlacement}
+        onDismissOffline={handleDismissOffline}
+        onAutomationChange={handleAutomationChange}
       />
       <div className="canvas-container">
         <GameCanvas

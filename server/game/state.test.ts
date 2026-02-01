@@ -5,7 +5,7 @@ describe("state", () => {
   it("creates initial state with correct defaults", () => {
     const state = createInitialState();
     expect(state.tick).toBe(0);
-    expect(state.currency).toBe(350);
+    expect(state.currency).toBe(400);
     expect(state.inventory).toEqual({
       iron_ore: 0,
       iron_bar: 0,
@@ -22,10 +22,10 @@ describe("state", () => {
     expect(state.mapHeight).toBe(20);
   });
 
-  it("generates 15-20 ore nodes", () => {
+  it("generates 25-35 ore nodes", () => {
     const state = createInitialState();
-    expect(state.oreNodes.length).toBeGreaterThanOrEqual(15);
-    expect(state.oreNodes.length).toBeLessThanOrEqual(20);
+    expect(state.oreNodes.length).toBeGreaterThanOrEqual(25);
+    expect(state.oreNodes.length).toBeLessThanOrEqual(35);
   });
 
   it("generates ore nodes with unique positions", () => {

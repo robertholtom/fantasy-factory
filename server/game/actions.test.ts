@@ -7,7 +7,7 @@ import {
   demolishBuilding,
   resetGame,
 } from "./actions.js";
-import { GameState, Inventory } from "../../shared/types.js";
+import { GameState, Inventory, Building, BuildingType, ForgerRecipe } from "../../shared/types.js";
 
 function emptyInventory(): Inventory {
   return { iron_ore: 0, iron_bar: 0, dagger: 0, armour: 0, copper_ore: 0, copper_bar: 0, wand: 0, magic_powder: 0 };
@@ -23,9 +23,20 @@ function makeState(overrides?: Partial<GameState>): GameState {
     oreNodes: [{ id: "ore-0", position: { x: 5, y: 5 }, type: "iron" as const }],
     mapWidth: 30,
     mapHeight: 20,
-    aiMode: false,
+    geologistExplorer: null,
     ...overrides,
   };
+}
+
+function makeBuilding(overrides: { id: string; type: BuildingType; position: { x: number; y: number } } & Partial<{ progress: number; storage: Inventory; recipe: ForgerRecipe; npcQueue: never[]; constructionProgress: number }>): Building {
+  return {
+    progress: 0,
+    constructionProgress: 1,
+    storage: emptyInventory(),
+    recipe: "dagger" as ForgerRecipe,
+    npcQueue: [],
+    ...overrides,
+  } as Building;
 }
 
 describe("placeBuilding", () => {
@@ -109,8 +120,8 @@ describe("placeBelt", () => {
   beforeEach(() => {
     const s = makeState();
     s.buildings.push(
-      { id: "b1", type: "miner", position: { x: 5, y: 5 }, progress: 0, storage: emptyInventory(), recipe: "dagger", npcQueue: [] },
-      { id: "b2", type: "smelter", position: { x: 6, y: 5 }, progress: 0, storage: emptyInventory(), recipe: "dagger", npcQueue: [] }
+      makeBuilding({ id: "b1", type: "miner", position: { x: 5, y: 5 } }),
+      makeBuilding({ id: "b2", type: "smelter", position: { x: 6, y: 5 } })
     );
     setState(s);
   });
@@ -145,8 +156,8 @@ describe("placeBelt", () => {
 
   it("rejects belt when not enough currency", () => {
     setState({ ...makeState({ currency: 2 }), buildings: [
-      { id: "b1", type: "miner", position: { x: 5, y: 5 }, progress: 0, storage: emptyInventory(), recipe: "dagger", npcQueue: [] },
-      { id: "b2", type: "smelter", position: { x: 6, y: 5 }, progress: 0, storage: emptyInventory(), recipe: "dagger", npcQueue: [] },
+      makeBuilding({ id: "b1", type: "miner", position: { x: 5, y: 5 } }),
+      makeBuilding({ id: "b2", type: "smelter", position: { x: 6, y: 5 } }),
     ]});
     const { error } = placeBelt({ x: 5, y: 5 }, { x: 6, y: 5 });
     expect(error).toBe("Not enough currency");
@@ -168,8 +179,8 @@ describe("setRecipe", () => {
   beforeEach(() => {
     const s = makeState();
     s.buildings.push(
-      { id: "forger-1", type: "forger", position: { x: 1, y: 1 }, progress: 0.5, storage: emptyInventory(), recipe: "dagger", npcQueue: [] },
-      { id: "miner-1", type: "miner", position: { x: 5, y: 5 }, progress: 0, storage: emptyInventory(), recipe: "dagger", npcQueue: [] }
+      makeBuilding({ id: "forger-1", type: "forger", position: { x: 1, y: 1 }, progress: 0.5 }),
+      makeBuilding({ id: "miner-1", type: "miner", position: { x: 5, y: 5 } })
     );
     setState(s);
   });
@@ -197,8 +208,8 @@ describe("demolishBuilding", () => {
   beforeEach(() => {
     const s = makeState({ currency: 100 });
     s.buildings.push(
-      { id: "s1", type: "smelter", position: { x: 2, y: 2 }, progress: 0, storage: emptyInventory(), recipe: "dagger", npcQueue: [] },
-      { id: "m1", type: "miner", position: { x: 5, y: 5 }, progress: 0, storage: emptyInventory(), recipe: "dagger", npcQueue: [] }
+      makeBuilding({ id: "s1", type: "smelter", position: { x: 2, y: 2 } }),
+      makeBuilding({ id: "m1", type: "miner", position: { x: 5, y: 5 } })
     );
     s.belts.push(
       { id: "belt-1", from: { x: 5, y: 5 }, to: { x: 2, y: 2 }, itemsInTransit: [] },
@@ -229,7 +240,7 @@ describe("demolishBuilding", () => {
   it("refunds correct amount for shop", () => {
     const s = makeState({ currency: 100 });
     s.buildings.push(
-      { id: "shop1", type: "shop", position: { x: 0, y: 0 }, progress: 0, storage: emptyInventory(), recipe: "dagger", npcQueue: [] }
+      makeBuilding({ id: "shop1", type: "shop", position: { x: 0, y: 0 } })
     );
     setState(s);
     const { state } = demolishBuilding("shop1");
@@ -247,7 +258,7 @@ describe("resetGame", () => {
     setState(makeState({ currency: 0, tick: 999 }));
     const state = resetGame();
     expect(state.tick).toBe(0);
-    expect(state.currency).toBe(350);
+    expect(state.currency).toBe(400);
     expect(state.buildings).toEqual([]);
     expect(state.belts).toEqual([]);
   });

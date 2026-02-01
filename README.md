@@ -1,80 +1,93 @@
 # Fantasy Factory
 
-A factory simulation game where you mine ore, smelt bars, and forge items to sell for profit. Built with React, Express, and TypeScript.
+A factory simulation idle game where you mine ore, smelt bars, and forge items to sell to NPCs. Built with React, Express, and TypeScript.
 
 ## How to Play
 
-You start with $150 and a grid scattered with ore nodes. There are two resource types — **iron** (orange) and **copper** (teal). Your goal is to build production chains and sell finished goods.
+You start with $400 and a grid scattered with ore nodes. There are two resource types — **iron** (orange) and **copper** (teal). Build production chains, sell to NPCs at your shop, and expand your factory.
 
-### Production Chains
+### Buildings
+
+| Building | Cost | Description |
+|----------|------|-------------|
+| Miner | $10 | Place on ore node. Produces 1 ore every 3-4 ticks |
+| Smelter | $25 | Consumes 2 ore → 1 bar (4-5 ticks) |
+| Forger | $50 | Consumes bars → finished goods |
+| Shop | $75 | NPCs arrive to buy your goods |
+| Warehouse | $100 | Bulk sells excess inventory at 70% price |
+| Geologist | $200 | Discovers new ore nodes ($2/tick upkeep) |
+
+### Production Chain
 
 ```
-Iron:   Miner → Smelter → Forger → Sell
-         (iron ore)  (iron bar)  (dagger/armour)
-
-Copper: Miner → Smelter → Forger → Sell
-         (copper ore) (copper bar) (wand/magic powder)
+Miner → Smelter → Forger → Shop
+ (ore)    (bar)    (item)   (sell)
 ```
 
-1. **Place a Miner** ($10) on an ore node. It produces ore matching the node type:
-   - **Iron node** — 1 iron ore every 3 seconds
-   - **Copper node** — 1 copper ore every 4 seconds
-2. **Place a Smelter** ($25) anywhere. It consumes 2 ore to produce 1 bar:
-   - **Iron ore** — 1 iron bar every 5 seconds
-   - **Copper ore** — 1 copper bar every 4 seconds
-   - When both ore types are present, iron is smelted first
-3. **Place a Forger** ($50) anywhere. It consumes bars to produce goods:
-   - **Dagger** — 1 iron bar, 5 seconds, sells for $20
-   - **Armour** — 2 iron bars, 8 seconds, sells for $30
-   - **Wand** — 1 copper bar, 6 seconds, sells for $25
-   - **Magic Powder** — 3 copper bars, 10 seconds, sells for $60
-4. **Connect buildings with Belts** ($5). Click source, then destination. Belts automatically move the right items between buildings (ore to smelters, the correct bar type to forgers based on recipe).
-5. **Sell finished goods** from your inventory using the sidebar buttons.
+Connect buildings with **Belts** ($5). Belts automatically route the correct items.
 
-### Profit Ratios
+### Recipes
 
-| Product | Ore needed | Bottleneck | $/tick | $/ore |
-|---------|-----------|------------|--------|-------|
-| Dagger | 2 iron | 6t (mining) | $3.33 | $10.00 |
-| Armour | 4 iron | 12t (mining) | $2.50 | $7.50 |
-| Wand | 2 copper | 8t (mining) | $3.13 | $12.50 |
-| Magic Powder | 6 copper | 24t (mining) | $2.50 | $10.00 |
+| Recipe | Bars | Ticks | Price | Revenue/tick |
+|--------|------|-------|-------|--------------|
+| Dagger | 1 iron | 5 | $20 | $4.00 |
+| Armour | 2 iron | 8 | $40 | $5.00 |
+| Wand | 1 copper | 6 | $25 | $4.17 |
+| Magic Powder | 3 copper | 10 | $45 | $4.50 |
 
-Iron daggers have the best throughput; copper wands have the best per-ore value; magic powder has the highest single-item value ($60) but the slowest throughput.
+### NPC System
+
+NPCs spawn at your shop wanting specific items. Each NPC type pays different rates:
+
+| NPC | Iron Items | Copper Items | Patience |
+|-----|------------|--------------|----------|
+| Warrior | 1.5x | 0.75x | 15-25 ticks |
+| Mage | 0.75x | 1.5x | 15-25 ticks |
+| Collector | 1.25x | 1.25x | 20-30 ticks |
+| Merchant | 1.0x | 1.0x | 30-45 ticks |
+
+NPCs leave if not served before patience runs out.
+
+### Automation
+
+Open the **Automation** tab to configure automatic building placement and recipe switching. Click **Smart Defaults** to enable optimal settings. Requires upgrades for belt and recipe automation.
 
 ### Controls
 
-- Click a **Buy** button in the sidebar, then click a grid cell to place the building
-- Click **Belt**, then click source building, then destination building
-- Click **Demolish**, then click a building to remove it (50% cost refund)
-- Click a **Forger** on the grid to cycle its recipe (D → A → W → P)
-- Press **Cancel** or buy another item to exit placement mode
+- Click **Buy** button, then click grid to place building
+- Click **Belt**, then source building, then destination
+- Click **Demolish**, then click building to remove (75% refund)
+- Click a **Forger** to cycle recipe (D → A → W → P)
 
-### Reading the Grid
+### Grid Legend
 
-| Symbol | Color | Meaning |
-|--------|-------|---------|
-| Orange square | Orange | Iron ore node |
-| Teal square | Teal | Copper ore node |
-| **M** | Blue | Miner |
-| **S** | Red | Smelter |
-| **D** | Green | Forger (dagger recipe) |
-| **A** | Green | Forger (armour recipe) |
-| **W** | Green | Forger (wand recipe) |
-| **P** | Green | Forger (magic powder recipe) |
-| Gold line + arrow | Gold | Belt (shows direction) |
+| Symbol | Meaning |
+|--------|---------|
+| Orange square | Iron ore node |
+| Teal square | Copper ore node |
+| **M** | Miner |
+| **S** | Smelter |
+| **D/A/W/P** | Forger (recipe) |
+| **$** | Shop |
+| **W** | Warehouse |
+| **G** | Geologist |
 
-Small text above buildings shows current storage (e.g. `3o` = 3 iron ore, `1b` = 1 iron bar, `2co` = 2 copper ore, `1cb` = 1 copper bar). The bar at the bottom of each building shows production progress.
+Small text shows storage (e.g. `3o` = 3 ore, `1b` = 1 bar). Bottom bar shows production progress.
 
-Finished goods from forgers without outgoing belts are automatically collected into your inventory.
+## Idle Features
+
+- **Upgrades**: Buy permanent improvements with currency
+- **Prestige**: Reset for Star Essence to buy powerful bonuses
+- **Offline Progress**: Earn resources while away (50% base efficiency)
+- **Auto-save**: Game saves every 10 ticks
 
 ## Development
 
 ```bash
 npm install
-npm run dev          # Start client + server in dev mode
+npm run dev          # Start client + server
 npm run test         # Run tests
 npm run build        # Production build
 ```
 
-The client runs on Vite's dev server and proxies `/api` requests to the Express server on port 3001.
+Client runs on Vite dev server, proxies `/api` to Express on port 3001.

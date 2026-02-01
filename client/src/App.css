@@ -207,3 +207,240 @@ button:disabled {
   width: 100%;
   height: 100%;
 }
+
+/* HUD Tabs */
+.hud-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.hud-tabs button {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+  background: #2a2a4e;
+}
+
+.hud-tabs button.active {
+  background: #4a4a8e;
+  border-color: #6a6aae;
+}
+
+/* Stats */
+.stats {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.star-essence {
+  font-size: 1rem;
+  color: #ff88ff;
+  font-weight: bold;
+}
+
+/* Offline Modal */
+.offline-modal {
+  background: #222244;
+  border: 2px solid #4a4a8e;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.offline-modal h2 {
+  color: #88ff88;
+  margin-bottom: 1rem;
+}
+
+.offline-modal p {
+  margin: 0.5rem 0;
+}
+
+.offline-earnings {
+  background: #1a1a2e;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.offline-modal button {
+  margin-top: 1rem;
+  padding: 0.75rem 2rem;
+  background: #4a4a8e;
+  font-size: 1rem;
+}
+
+/* Upgrades Panel */
+.upgrades-panel, .prestige-panel, .automation-panel {
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+.currency-display {
+  color: #ffd700;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.upgrade-item {
+  background: #222244;
+  border: 1px solid #333366;
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.upgrade-item.available {
+  border-color: #448844;
+}
+
+.upgrade-item.locked {
+  opacity: 0.6;
+}
+
+.upgrade-item.purchased {
+  background: #224422;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upgrade-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.upgrade-name {
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.upgrade-cost {
+  color: #ffd700;
+  font-size: 0.8rem;
+}
+
+.upgrade-desc {
+  font-size: 0.75rem;
+  color: #aaa;
+  margin-bottom: 0.5rem;
+}
+
+.upgrade-level {
+  color: #88ff88;
+  font-size: 0.8rem;
+}
+
+.checkmark {
+  color: #88ff88;
+  font-size: 1.2rem;
+}
+
+/* Prestige Panel */
+.prestige-stats {
+  background: #1a1a2e;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.prestige-action {
+  background: #222244;
+  padding: 0.75rem;
+  border-radius: 4px;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.prestige-btn {
+  background: #884488;
+  border-color: #aa66aa;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+.prestige-btn:hover {
+  background: #aa66aa;
+}
+
+.prestige-upgrade {
+  background: #222244;
+  border: 1px solid #333366;
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prestige-upgrade.available {
+  border-color: #884488;
+}
+
+.prestige-upgrade.maxed {
+  background: #442244;
+  border-color: #663366;
+}
+
+.bonus-list {
+  font-size: 0.8rem;
+  color: #aaa;
+  background: #1a1a2e;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.bonus-list p {
+  margin: 0.25rem 0;
+}
+
+/* Automation Panel */
+.auto-toggle {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #333366;
+}
+
+.auto-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.auto-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.auto-setting {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #333366;
+}
+
+.auto-setting label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.auto-setting select,
+.auto-setting input[type="number"] {
+  background: #2a2a4e;
+  border: 1px solid #444;
+  color: #eee;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  width: 100px;
+}
+
+h4 {
+  font-size: 0.85rem;
+  color: #aaa;
+  margin: 0.75rem 0 0.5rem 0;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.25rem;
+}

@@ -1,0 +1,117 @@
+import {
+  UpgradeState,
+  PrestigeData,
+  UpgradeId,
+  PRESTIGE_UPGRADES,
+  PrestigeUpgradeId,
+} from "../../shared/types.js";
+
+export interface Modifiers {
+  productionSpeed: number;      // Multiplier for all production
+  miningSpeed: number;          // Multiplier for miners specifically
+  smeltingSpeed: number;        // Multiplier for smelters
+  forgingSpeed: number;         // Multiplier for forgers
+  beltSpeed: number;            // Multiplier for belt transfer
+  sellPrice: number;            // Multiplier for sell prices
+  storageCapacity: number;      // Added storage slots
+  npcPatience: number;          // Multiplier for NPC patience
+  offlineEfficiency: number;    // Multiplier for offline progress
+  startingCurrency: number;     // Bonus starting currency
+  mapExpansion: number;         // Added map size
+}
+
+// Upgrade effect definitions
+const UPGRADE_EFFECTS: Record<UpgradeId, (m: Modifiers) => void> = {
+  mining_efficiency_1: (m) => { m.miningSpeed *= 1.10; },
+  mining_efficiency_2: (m) => { m.miningSpeed *= 1.15; },
+  mining_efficiency_3: (m) => { m.miningSpeed *= 1.20; },
+  smelting_efficiency_1: (m) => { m.smeltingSpeed *= 1.10; },
+  smelting_efficiency_2: (m) => { m.smeltingSpeed *= 1.15; },
+  forging_efficiency_1: (m) => { m.forgingSpeed *= 1.10; },
+  forging_efficiency_2: (m) => { m.forgingSpeed *= 1.15; },
+  belt_maintenance_1: (m) => { m.beltSpeed *= 1.10; },
+  express_belts: (m) => { m.beltSpeed *= 1.25; },
+  extended_storage: (m) => { m.storageCapacity += 2; },
+  patient_customers: (m) => { m.npcPatience *= 1.20; },
+  premium_pricing: (m) => { m.sellPrice *= 1.15; },
+  auto_belt: (m) => { /* Unlocks auto-belt in automation */ },
+  auto_recipe: (m) => { /* Unlocks auto-recipe in automation */ },
+  automation_mastery: (m) => { /* Unlocks full auto-play */ },
+  warehouse_efficiency: (m) => { m.sellPrice *= 1.10; }, // Better wholesale prices
+  map_expansion: (m) => { m.mapExpansion += 10; },
+};
+
+export function getModifiers(upgrades: UpgradeState, prestige: PrestigeData): Modifiers {
+  // Start with base modifiers
+  const m: Modifiers = {
+    productionSpeed: 1,
+    miningSpeed: 1,
+    smeltingSpeed: 1,
+    forgingSpeed: 1,
+    beltSpeed: 1,
+    sellPrice: 1,
+    storageCapacity: 0,
+    npcPatience: 1,
+    offlineEfficiency: 1,
+    startingCurrency: 0,
+    mapExpansion: 0,
+  };
+
+  // Apply prestige bonuses
+  m.productionSpeed *= prestige.bonuses.productionSpeed;
+  m.sellPrice *= prestige.bonuses.sellPrice;
+  m.startingCurrency += prestige.bonuses.startingCurrency;
+  m.offlineEfficiency *= prestige.bonuses.offlineEfficiency;
+  m.beltSpeed *= prestige.bonuses.beltSpeed;
+
+  // Apply purchased upgrades
+  for (const upgradeId of upgrades.purchased) {
+    const effect = UPGRADE_EFFECTS[upgradeId];
+    if (effect) {
+      effect(m);
+    }
+  }
+
+  // Combine specific speeds with global production speed
+  m.miningSpeed *= m.productionSpeed;
+  m.smeltingSpeed *= m.productionSpeed;
+  m.forgingSpeed *= m.productionSpeed;
+
+  return m;
+}
+
+// Check if an automation feature is unlocked
+export function isAutomationUnlocked(upgrades: UpgradeState, feature: "autoBelt" | "autoRecipe" | "fullAuto"): boolean {
+  switch (feature) {
+    case "autoBelt":
+      return upgrades.purchased.includes("auto_belt");
+    case "autoRecipe":
+      return upgrades.purchased.includes("auto_recipe");
+    case "fullAuto":
+      return upgrades.purchased.includes("automation_mastery");
+    default:
+      return false;
+  }
+}
+
+// Get prestige upgrade level from bonuses (reverse calculation)
+export function getPrestigeUpgradeLevel(prestige: PrestigeData, upgradeId: PrestigeUpgradeId): number {
+  const upgrade = PRESTIGE_UPGRADES[upgradeId];
+  const currentBonus = (() => {
+    switch (upgradeId) {
+      case "swift_production": return prestige.bonuses.productionSpeed;
+      case "merchant_favor": return prestige.bonuses.sellPrice;
+      case "inheritance": return prestige.bonuses.startingCurrency;
+      case "tireless_workers": return prestige.bonuses.offlineEfficiency;
+      case "express_belts_prestige": return prestige.bonuses.beltSpeed;
+    }
+  })();
+
+  // Reverse the effect function to find level
+  for (let level = upgrade.maxLevel; level >= 0; level--) {
+    if (upgrade.effect(level) === currentBonus) {
+      return level;
+    }
+  }
+  return 0;
+}
