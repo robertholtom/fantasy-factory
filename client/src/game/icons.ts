@@ -1,3 +1,79 @@
+// NPC icons as data URLs
+export const NPC_ICONS: Record<string, string> = {
+  warrior: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <circle cx="16" cy="10" r="6" fill="#c44"/>
+      <path d="M10 16 L22 16 L24 28 L8 28 Z" fill="#8b0000"/>
+      <rect x="4" y="12" width="6" height="3" fill="#a0a0a0"/>
+      <rect x="22" y="12" width="6" height="3" fill="#a0a0a0"/>
+      <circle cx="14" cy="9" r="1" fill="#fff"/>
+      <circle cx="18" cy="9" r="1" fill="#fff"/>
+    </svg>
+  `)}`,
+  mage: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <circle cx="16" cy="10" r="6" fill="#66f"/>
+      <path d="M10 16 L22 16 L24 28 L8 28 Z" fill="#4040a0"/>
+      <path d="M10 4 L16 0 L22 4 L16 8 Z" fill="#8080ff"/>
+      <circle cx="14" cy="9" r="1" fill="#fff"/>
+      <circle cx="18" cy="9" r="1" fill="#fff"/>
+      <circle cx="16" cy="2" r="1.5" fill="#ffff80"/>
+    </svg>
+  `)}`,
+  collector: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <circle cx="16" cy="10" r="6" fill="#4a4"/>
+      <path d="M10 16 L22 16 L24 28 L8 28 Z" fill="#2a6a2a"/>
+      <rect x="6" y="20" width="8" height="6" fill="#8b4513"/>
+      <circle cx="14" cy="9" r="1" fill="#fff"/>
+      <circle cx="18" cy="9" r="1" fill="#fff"/>
+      <ellipse cx="10" cy="22" rx="3" ry="2" fill="#ffd700"/>
+    </svg>
+  `)}`,
+  merchant: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <circle cx="16" cy="10" r="6" fill="#da4"/>
+      <path d="M10 16 L22 16 L24 28 L8 28 Z" fill="#8b6914"/>
+      <circle cx="14" cy="9" r="1" fill="#fff"/>
+      <circle cx="18" cy="9" r="1" fill="#fff"/>
+      <ellipse cx="16" cy="22" rx="4" ry="3" fill="#ffd700"/>
+      <text x="16" y="24" font-size="6" fill="#000" text-anchor="middle">$</text>
+    </svg>
+  `)}`,
+  noble: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <circle cx="16" cy="10" r="6" fill="#8b4513"/>
+      <path d="M10 16 L22 16 L24 28 L8 28 Z" fill="#4a2a0a"/>
+      <path d="M10 4 L12 8 L16 6 L20 8 L22 4 L20 6 L16 4 L12 6 Z" fill="#ffd700"/>
+      <circle cx="14" cy="9" r="1" fill="#fff"/>
+      <circle cx="18" cy="9" r="1" fill="#fff"/>
+      <circle cx="16" cy="5" r="1.5" fill="#ff4444"/>
+    </svg>
+  `)}`,
+  adventurer: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <circle cx="16" cy="10" r="6" fill="#2e8b57"/>
+      <path d="M10 16 L22 16 L24 28 L8 28 Z" fill="#1a5a3a"/>
+      <path d="M12 2 L20 2 L18 8 L14 8 Z" fill="#8b4513"/>
+      <circle cx="14" cy="9" r="1" fill="#fff"/>
+      <circle cx="18" cy="9" r="1" fill="#fff"/>
+      <rect x="22" y="8" width="6" height="2" fill="#a0a0a0"/>
+    </svg>
+  `)}`,
+  king: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <circle cx="16" cy="12" r="6" fill="#fc0"/>
+      <path d="M10 18 L22 18 L24 28 L8 28 Z" fill="#8b0000"/>
+      <path d="M8 4 L10 8 L13 6 L16 8 L19 6 L22 8 L24 4 L22 6 L19 4 L16 6 L13 4 L10 6 Z" fill="#ffd700"/>
+      <circle cx="14" cy="11" r="1" fill="#fff"/>
+      <circle cx="18" cy="11" r="1" fill="#fff"/>
+      <circle cx="16" cy="5" r="2" fill="#ff0000"/>
+      <path d="M6 18 L8 28 L6 28 Z" fill="#800000"/>
+      <path d="M26 18 L24 28 L26 28 Z" fill="#800000"/>
+    </svg>
+  `)}`,
+};
+
 // Item icons as data URLs
 export const ITEM_ICONS: Record<string, string> = {
   dagger: `data:image/svg+xml,${encodeURIComponent(`

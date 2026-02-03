@@ -11,7 +11,7 @@ import {
   saveGame,
   getCurrentSave,
 } from "../game/state.js";
-import { placeBuilding, placeBelt, setRecipe, demolishBuilding, resetGame, applySmartDefaults } from "../game/actions.js";
+import { placeBuilding, placeBelt, setRecipe, demolishBuilding, resetGame, resetGameCompletely, applySmartDefaults } from "../game/actions.js";
 import {
   PlaceBuildingRequest,
   PlaceBeltRequest,
@@ -121,6 +121,11 @@ router.post("/demolish", (req, res) => {
 
 router.post("/reset", (_req, res) => {
   const state = resetGame();
+  res.json(state);
+});
+
+router.post("/reset-completely", (_req, res) => {
+  const state = resetGameCompletely();
   res.json(state);
 });
 

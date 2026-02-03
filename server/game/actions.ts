@@ -8,7 +8,8 @@ import {
   Inventory,
   GEOLOGIST_MAX_COUNT,
 } from "../../shared/types.js";
-import { getState, setState, createInitialState } from "./state.js";
+import { getState, setState, createInitialState, setPrestige, setUpgrades, setAutomation, setMeta, saveGame } from "./state.js";
+import { createDefaultPrestige, createDefaultUpgrades, createDefaultAutomation, createDefaultMeta } from "./persistence.js";
 import { applySmartDefaults } from "./automation.js";
 
 function emptyInventory(): Inventory {
@@ -177,6 +178,17 @@ export function demolishBuilding(
 export function resetGame(): GameState {
   const newState = createInitialState();
   setState(newState);
+  return newState;
+}
+
+export function resetGameCompletely(): GameState {
+  const newState = createInitialState();
+  setState(newState);
+  setMeta(createDefaultMeta());
+  setPrestige(createDefaultPrestige());
+  setUpgrades(createDefaultUpgrades());
+  setAutomation(createDefaultAutomation());
+  saveGame();
   return newState;
 }
 

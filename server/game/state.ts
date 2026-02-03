@@ -98,6 +98,12 @@ export function getMeta(): GameMeta {
   return createDefaultMeta();
 }
 
+export function setMeta(meta: GameMeta): void {
+  if (currentSave) {
+    currentSave.meta = meta;
+  }
+}
+
 export function getPrestige(): PrestigeData {
   if (currentSave) {
     return currentSave.prestige;

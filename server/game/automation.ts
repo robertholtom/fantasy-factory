@@ -92,6 +92,19 @@ function calculateWarehouseProfit(forgerCount: number): number {
 
 // === DEMAND ANALYSIS ===
 
+// Pick best recipe for ore type based on NPC demand
+function pickRecipeForOreType(state: GameState, oreType: "iron" | "copper"): ForgerRecipe {
+  const demand = analyzeDemand(state);
+
+  if (oreType === "iron") {
+    // Pick armour if demand is higher, otherwise dagger
+    return demand.armour > demand.dagger ? "armour" : "dagger";
+  } else {
+    // Pick magic_powder if demand is higher, otherwise wand
+    return demand.magic_powder > demand.wand ? "magic_powder" : "wand";
+  }
+}
+
 function analyzeDemand(state: GameState): Record<FinishedGood, number> {
   const demand: Record<FinishedGood, number> = { dagger: 0, armour: 0, wand: 0, magic_powder: 0 };
 
@@ -99,13 +112,29 @@ function analyzeDemand(state: GameState): Record<FinishedGood, number> {
     if (building.type === "shop") {
       for (const npc of building.npcQueue) {
         const urgencyWeight = 1 + (1 - npc.patienceLeft / npc.maxPatience) * 2;
-        const basePrice = SELL_PRICES[npc.wantedItem];
-        const isIron = RECIPE_BAR_TYPE[npc.wantedItem] === "iron_bar";
-        const mult = isIron
-          ? NPC_PRICE_MULTIPLIER[npc.npcType].iron
-          : NPC_PRICE_MULTIPLIER[npc.npcType].copper;
-        const value = basePrice * mult * urgencyWeight;
-        demand[npc.wantedItem] += value;
+
+        // Handle multi-item NPCs (Noble/Adventurer)
+        if (npc.multiItemDemand) {
+          for (const { item, quantity } of npc.multiItemDemand.items) {
+            const value = SELL_PRICES[item] * npc.multiItemDemand.bonusMultiplier * quantity * urgencyWeight;
+            demand[item] += value;
+          }
+        } else if (npc.kingDemand) {
+          // Handle King demand
+          for (const { item, quantity } of npc.kingDemand.items) {
+            const value = SELL_PRICES[item] * 4.0 * quantity * urgencyWeight;  // King pays 4x
+            demand[item] += value;
+          }
+        } else {
+          // Normal single-item NPC
+          const basePrice = SELL_PRICES[npc.wantedItem];
+          const isIron = RECIPE_BAR_TYPE[npc.wantedItem] === "iron_bar";
+          const mult = isIron
+            ? NPC_PRICE_MULTIPLIER[npc.npcType].iron
+            : NPC_PRICE_MULTIPLIER[npc.npcType].copper;
+          const value = basePrice * mult * urgencyWeight;
+          demand[npc.wantedItem] += value;
+        }
       }
     }
   }
@@ -473,14 +502,15 @@ export function runAutomation(state: GameState): void {
       const forgerPos = findEmptyNear(smelter.position, reserved);
       if (forgerPos) {
         const minerBelt = state.belts.find(b => b.to.x === smelter.position.x && b.to.y === smelter.position.y);
-        let recipe: ForgerRecipe = "dagger";
+        let oreType: "iron" | "copper" = "iron";
         if (minerBelt) {
           const miner = state.buildings.find(b => b.position.x === minerBelt.from.x && b.position.y === minerBelt.from.y);
           if (miner) {
             const oreNode = state.oreNodes.find(n => n.position.x === miner.position.x && n.position.y === miner.position.y);
-            if (oreNode?.type === "copper") recipe = "wand";
+            if (oreNode?.type === "copper") oreType = "copper";
           }
         }
+        const recipe = pickRecipeForOreType(state, oreType);
         actions.push({
           type: "forger",
           cost,
@@ -644,7 +674,7 @@ export function runAutomation(state: GameState): void {
           if (forgerPos) {
             const cost = BUILDING_COSTS.miner + BUILDING_COSTS.smelter + BUILDING_COSTS.forger + (canAutoBelt ? BELT_COST * 3 : 0);
             const profit = calculateChainProfitPerTick(closest.node.type);
-            const recipe: ForgerRecipe = closest.node.type === "copper" ? "wand" : "dagger";
+            const recipe = pickRecipeForOreType(state, closest.node.type);
 
             actions.push({
               type: "chain",
@@ -814,7 +844,7 @@ export function runAutomation(state: GameState): void {
       const smelter = smelters[0];
       const forgerPos = findEmptyNear(smelter.position, reserved);
       if (forgerPos) {
-        let recipe: ForgerRecipe = "dagger";
+        let oreType: "iron" | "copper" = "iron";
         const minerBelt = state.belts.find(b =>
           b.to.x === smelter.position.x && b.to.y === smelter.position.y
         );
@@ -826,9 +856,10 @@ export function runAutomation(state: GameState): void {
             const ore = state.oreNodes.find(n =>
               n.position.x === miner.position.x && n.position.y === miner.position.y
             );
-            if (ore?.type === "copper") recipe = "wand";
+            if (ore?.type === "copper") oreType = "copper";
           }
         }
+        const recipe = pickRecipeForOreType(state, oreType);
 
         if (placeBuilding("forger", forgerPos, recipe)) {
           if (canAutoBelt) {
@@ -952,7 +983,8 @@ export function runAutomation(state: GameState): void {
       if (availableCurrency >= cost) {
         const forgerPos = findEmptyNear(smelterWithBars.position, reserved);
         if (forgerPos) {
-          let recipe: ForgerRecipe = smelterWithBars.storage.copper_bar > smelterWithBars.storage.iron_bar ? "wand" : "dagger";
+          const oreType: "iron" | "copper" = smelterWithBars.storage.copper_bar > smelterWithBars.storage.iron_bar ? "copper" : "iron";
+          const recipe = pickRecipeForOreType(state, oreType);
           if (placeBuilding("forger", forgerPos, recipe)) {
             if (canAutoBelt) {
               placeBelt(smelterWithBars.position, forgerPos);

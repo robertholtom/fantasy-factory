@@ -87,6 +87,66 @@ body {
   text-align: center;
 }
 
+.item-icon-small {
+  width: 18px;
+  height: 18px;
+}
+
+.npc-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.npc-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.4rem;
+  background: #2a2a4e;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.npc-type {
+  text-transform: capitalize;
+  min-width: 60px;
+}
+
+.npc-warrior { border-left: 3px solid #c44; }
+.npc-mage { border-left: 3px solid #66f; }
+.npc-collector { border-left: 3px solid #4a4; }
+.npc-merchant { border-left: 3px solid #da4; }
+.npc-noble { border-left: 3px solid #8b4513; background: #2e2a3a; }
+.npc-adventurer { border-left: 3px solid #2e8b57; background: #2a3a2e; }
+.npc-king { border-left: 3px solid #fc0; background: #3a3a2e; }
+
+.npc-wants {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.king-demand-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.7rem;
+  color: #fc0;
+}
+
+.multi-demand-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.7rem;
+  color: #8fd;
+}
+
+.npc-patience {
+  margin-left: auto;
+  color: #888;
+  font-size: 0.75rem;
+}
+
 .buttons {
   display: flex;
   flex-direction: column;
@@ -178,6 +238,39 @@ button:disabled {
 
 .reset-btn:hover {
   background: #664444;
+}
+
+.reset-completely-btn {
+  background: #661111;
+  border-color: #882222;
+  margin-top: 0.5rem;
+}
+
+.reset-completely-btn:hover {
+  background: #882222;
+}
+
+.reset-confirm {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #331111;
+  border: 1px solid #882222;
+  border-radius: 4px;
+}
+
+.reset-confirm p {
+  color: #ff6b6b;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.reset-confirm-btn {
+  background: #881111;
+  border-color: #aa2222;
+}
+
+.reset-confirm-btn:hover {
+  background: #aa2222;
 }
 
 .error-msg {

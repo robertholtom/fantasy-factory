@@ -6,6 +6,7 @@ import {
   GeologistExplorer,
   Inventory,
   KingDemand,
+  MultiItemDemand,
   MINER_TICKS,
   SMELT_TICKS,
   SMELT_ORE_COST,
@@ -33,6 +34,7 @@ import {
   KING_COOLDOWN_TICKS,
   KING_PRICE_MULTIPLIER,
   KING_PENALTY_DURATION,
+  MULTI_ITEM_BONUS,
 } from "../../shared/types.js";
 import { getState, getUpgrades, getPrestige, getAutomation, tickAutoSave, updateMetaStats, getMeta } from "./state.js";
 import { getModifiers } from "./modifiers.js";
@@ -170,6 +172,9 @@ function tick(): void {
     // Try to spawn King first (separate from normal NPCs)
     trySpawnKing(state, building, modifiers.npcPatience);
 
+    // Try to spawn multi-item NPCs (Noble/Adventurer)
+    trySpawnMultiItemNpc(building, modifiers.npcPatience);
+
     // Spawn normal NPCs: if queue < max and random chance (affected by penalty)
     const effectiveSpawnChance = NPC_SPAWN_CHANCE * modifiers.npcSpawnChance;
     if (building.npcQueue.length < NPC_MAX_QUEUE && Math.random() < effectiveSpawnChance) {
@@ -189,6 +194,19 @@ function tick(): void {
           return false; // King leaves after being served
         }
         return true; // King stays
+      }
+
+      // Handle multi-item NPCs (Noble/Adventurer)
+      if (npc.multiItemDemand) {
+        if (canFulfillMultiItemDemand(building.storage, npc.multiItemDemand)) {
+          fulfillMultiItemDemand(building.storage, npc.multiItemDemand);
+          const earned = Math.round(npc.multiItemDemand.totalValue * modifiers.sellPrice);
+          state.currency += earned;
+          currencyEarnedThisTick += earned;
+          meta.totalCurrencyEarned += earned;
+          return false; // NPC leaves after being served
+        }
+        return true; // NPC stays
       }
 
       // Normal NPC handling
@@ -462,6 +480,46 @@ function fulfillKingDemand(storage: Inventory, demand: KingDemand): void {
   }
 }
 
+function trySpawnMultiItemNpc(shop: Building, patienceMultiplier: number): boolean {
+  if (shop.npcQueue.length >= NPC_MAX_QUEUE) return false;
+  if (Math.random() >= 0.03) return false;  // 3% chance per tick
+
+  const npcType: "noble" | "adventurer" = Math.random() < 0.5 ? "noble" : "adventurer";
+  const items: { item: FinishedGood; quantity: number }[] = npcType === "noble"
+    ? [{ item: "dagger", quantity: 1 }, { item: "armour", quantity: 1 }]
+    : [{ item: "wand", quantity: 1 }, { item: "magic_powder", quantity: 1 }];
+
+  const totalValue = items.reduce((sum, { item, quantity }) =>
+    sum + SELL_PRICES[item] * quantity, 0) * MULTI_ITEM_BONUS;
+
+  const [minP, maxP] = NPC_PATIENCE[npcType];
+  const patience = Math.floor(randomInt(minP, maxP) * patienceMultiplier);
+
+  shop.npcQueue.push({
+    id: `${npcType}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    npcType,
+    wantedItem: items[0].item,  // Fallback for display
+    multiItemDemand: {
+      items,
+      totalValue,
+      bonusMultiplier: MULTI_ITEM_BONUS,
+    },
+    patienceLeft: patience,
+    maxPatience: patience,
+  });
+
+  return true;
+}
+
+function canFulfillMultiItemDemand(storage: Inventory, demand: MultiItemDemand): boolean {
+  return demand.items.every(({ item, quantity }) => storage[item] >= quantity);
+}
+
+function fulfillMultiItemDemand(storage: Inventory, demand: MultiItemDemand): void {
+  for (const { item, quantity } of demand.items) {
+    storage[item] -= quantity;
+  }
+}
 
 export function startGameLoop(): void {
   if (intervalId) return;

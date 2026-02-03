@@ -9,7 +9,7 @@ export type OreType = "iron" | "copper";
 
 export type ForgerRecipe = "dagger" | "armour" | "wand" | "magic_powder";
 
-export type NpcType = "warrior" | "mage" | "collector" | "merchant" | "king";
+export type NpcType = "warrior" | "mage" | "collector" | "merchant" | "noble" | "adventurer" | "king";
 
 export type FinishedGood = "dagger" | "armour" | "wand" | "magic_powder";
 
@@ -18,11 +18,20 @@ export interface KingDemand {
   totalValue: number;
 }
 
+export interface MultiItemDemand {
+  items: { item: FinishedGood; quantity: number }[];
+  totalValue: number;
+  bonusMultiplier: number;
+}
+
+export const MULTI_ITEM_BONUS = 1.75;
+
 export interface Npc {
   id: string;
   npcType: NpcType;
   wantedItem: FinishedGood;
   kingDemand?: KingDemand;  // Only for king
+  multiItemDemand?: MultiItemDemand;  // For noble/adventurer
   patienceLeft: number;
   maxPatience: number;
 }
@@ -177,6 +186,8 @@ export const NPC_PATIENCE: Record<NpcType, [number, number]> = {
   mage: [15, 25],
   collector: [20, 30],
   merchant: [30, 45],
+  noble: [25, 35],
+  adventurer: [20, 30],
   king: [40, 60],
 };
 
@@ -185,6 +196,8 @@ export const NPC_PRICE_MULTIPLIER: Record<NpcType, { iron: number; copper: numbe
   mage: { iron: 0.75, copper: 1.5 },
   collector: { iron: 1.25, copper: 1.25 },
   merchant: { iron: 1.0, copper: 1.0 },
+  noble: { iron: 1.75, copper: 1.0 },  // Prefers iron items
+  adventurer: { iron: 1.0, copper: 1.75 },  // Prefers copper items
   king: { iron: 4.0, copper: 4.0 },  // Used for display, actual calc uses totalValue
 };
 

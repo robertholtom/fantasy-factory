@@ -154,6 +154,11 @@ export async function resetGame(): Promise<GameState> {
   return res.json();
 }
 
+export async function resetGameCompletely(): Promise<GameState> {
+  const res = await fetch(`${BASE}/reset-completely`, { method: "POST" });
+  return res.json();
+}
+
 export async function applySmartDefaults(): Promise<{ automation: AutomationSettings }> {
   const res = await fetch(`${BASE}/automation/smart-defaults`, { method: "POST" });
   return res.json();

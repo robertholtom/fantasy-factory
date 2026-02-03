@@ -174,6 +174,12 @@ function App() {
     setGhostPos(null);
   }, []);
 
+  const handleResetCompletely = useCallback(async () => {
+    await api.resetGameCompletely();
+    // Full reload to reset all client state
+    window.location.reload();
+  }, []);
+
   const handleCancelPlacement = useCallback(() => {
     setPlacementMode(null);
     setGhostPos(null);
@@ -204,6 +210,7 @@ function App() {
         onStartBelt={handleStartBelt}
         onStartDemolish={handleStartDemolish}
         onReset={handleReset}
+        onResetCompletely={handleResetCompletely}
         onCancelPlacement={handleCancelPlacement}
         onDismissOffline={handleDismissOffline}
         onAutomationChange={handleAutomationChange}

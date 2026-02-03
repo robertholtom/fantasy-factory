@@ -44,6 +44,7 @@ interface Props {
   onStartBelt: () => void;
   onStartDemolish: () => void;
   onReset: () => void;
+  onResetCompletely: () => void;
   onCancelPlacement: () => void;
   onDismissOffline: () => void;
   onAutomationChange: () => void;
@@ -64,6 +65,7 @@ export default function HUD({
   onStartBelt,
   onStartDemolish,
   onReset,
+  onResetCompletely,
   onCancelPlacement,
   onDismissOffline,
   onAutomationChange,
@@ -72,6 +74,7 @@ export default function HUD({
   const [prestigeInfo, setPrestigeInfo] = useState<PrestigeInfo | null>(null);
   const [upgradeInfo, setUpgradeInfo] = useState<UpgradeInfo | null>(null);
   const [localAutomation, setLocalAutomation] = useState<AutomationSettings | null>(null);
+  const [completeResetConfirm, setCompleteResetConfirm] = useState(false);
 
   useEffect(() => {
     if (activeTab === "prestige") {
@@ -188,6 +191,42 @@ export default function HUD({
           })()}
         </div>
       </div>
+
+      {(() => {
+        const shops = state.buildings.filter(b => b.type === "shop");
+        const allNpcs = shops.flatMap(s => s.npcQueue);
+        if (allNpcs.length === 0) return null;
+        return (
+          <div className="hud-section">
+            <h3>Customers ({allNpcs.length})</h3>
+            <div className="npc-queue">
+              {allNpcs.map(npc => (
+                <div key={npc.id} className={`npc-item npc-${npc.npcType}`}>
+                  <span className="npc-type">{npc.npcType}</span>
+                  <span className="npc-wants">
+                    {npc.npcType === "king" && npc.kingDemand ? (
+                      npc.kingDemand.items.map(({ item, quantity }) => (
+                        <span key={item} className="king-demand-item">
+                          {quantity}x<img src={ITEM_ICONS[item]} alt={item} className="item-icon-small" />
+                        </span>
+                      ))
+                    ) : npc.multiItemDemand ? (
+                      npc.multiItemDemand.items.map(({ item, quantity }) => (
+                        <span key={item} className="multi-demand-item">
+                          {quantity}x<img src={ITEM_ICONS[item]} alt={item} className="item-icon-small" />
+                        </span>
+                      ))
+                    ) : (
+                      <img src={ITEM_ICONS[npc.wantedItem]} alt={npc.wantedItem} className="item-icon-small" />
+                    )}
+                  </span>
+                  <span className="npc-patience">{npc.patienceLeft}/{npc.maxPatience}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {state.kingPenaltyTicksLeft > 0 && (
         <div className="hud-section penalty-warning">
@@ -311,6 +350,33 @@ export default function HUD({
         <button className="reset-btn" onClick={onReset}>
           Reset Game
         </button>
+        {!completeResetConfirm ? (
+          <button
+            className="reset-btn reset-completely-btn"
+            onClick={() => setCompleteResetConfirm(true)}
+          >
+            Reset Completely
+          </button>
+        ) : (
+          <div className="reset-confirm">
+            <p>This will erase ALL progress including prestige!</p>
+            <button
+              className="reset-btn reset-confirm-btn"
+              onClick={() => {
+                setCompleteResetConfirm(false);
+                onResetCompletely();
+              }}
+            >
+              Confirm Full Reset
+            </button>
+            <button
+              className="cancel-btn"
+              onClick={() => setCompleteResetConfirm(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

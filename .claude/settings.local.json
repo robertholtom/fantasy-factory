@@ -10,7 +10,8 @@
       "Bash(npm run build:*)",
       "Bash(npm test:*)",
       "Bash(npm run test:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(curl:*)"
     ]
   }
 }
