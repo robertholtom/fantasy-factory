@@ -2,8 +2,8 @@
   "version": 3,
   "playerId": "default",
   "state": {
-    "tick": 2810,
-    "currency": 48640,
+    "tick": 190380,
+    "currency": 3837777,
     "inventory": {
       "iron_ore": 0,
       "iron_bar": 0,
@@ -22,7 +22,7 @@
           "x": 2,
           "y": 2
         },
-        "progress": 0.3333333333333333,
+        "progress": 0.6666666666666666,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -47,7 +47,7 @@
         "progress": 0.2,
         "constructionProgress": 1,
         "storage": {
-          "iron_ore": 740,
+          "iron_ore": 50759,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
@@ -93,12 +93,12 @@
         "storage": {
           "iron_ore": 0,
           "iron_bar": 0,
-          "dagger": 2219,
-          "armour": 269,
+          "dagger": 175901,
+          "armour": 23690,
           "copper_ore": 0,
           "copper_bar": 0,
-          "wand": 2782,
-          "magic_powder": 374
+          "wand": 231320,
+          "magic_powder": 33623
         },
         "recipe": "dagger",
         "npcQueue": []
@@ -110,7 +110,7 @@
           "x": 4,
           "y": 8
         },
-        "progress": 0.3333333333333333,
+        "progress": 0.6666666666666666,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -132,7 +132,7 @@
           "x": 3,
           "y": 5
         },
-        "progress": 0.25,
+        "progress": 0.75,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -154,14 +154,14 @@
           "x": 4,
           "y": 5
         },
-        "progress": 0.75,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
-          "copper_ore": 3,
+          "copper_ore": 2,
           "copper_bar": 0,
           "wand": 0,
           "magic_powder": 0
@@ -176,7 +176,7 @@
           "x": 5,
           "y": 5
         },
-        "progress": 0.6666666666666666,
+        "progress": 0.3333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -184,7 +184,7 @@
           "dagger": 0,
           "armour": 0,
           "copper_ore": 0,
-          "copper_bar": 231,
+          "copper_bar": 15862,
           "wand": 0,
           "magic_powder": 0
         },
@@ -198,7 +198,7 @@
           "x": 2,
           "y": 6
         },
-        "progress": 0,
+        "progress": 0.5,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -220,7 +220,7 @@
           "x": 9,
           "y": 1
         },
-        "progress": 0,
+        "progress": 0.3333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -245,7 +245,7 @@
         "progress": 0.4,
         "constructionProgress": 1,
         "storage": {
-          "iron_ore": 715,
+          "iron_ore": 50735,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
@@ -286,7 +286,7 @@
           "x": 12,
           "y": 9
         },
-        "progress": 0.6666666666666666,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -330,7 +330,7 @@
           "x": 13,
           "y": 1
         },
-        "progress": 0,
+        "progress": 0.5,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -352,14 +352,14 @@
           "x": 14,
           "y": 1
         },
-        "progress": 0.75,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
-          "copper_ore": 3,
+          "copper_ore": 2,
           "copper_bar": 0,
           "wand": 0,
           "magic_powder": 0
@@ -374,7 +374,7 @@
           "x": 15,
           "y": 1
         },
-        "progress": 0,
+        "progress": 0.6666666666666666,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -382,7 +382,7 @@
           "dagger": 0,
           "armour": 0,
           "copper_ore": 0,
-          "copper_bar": 201,
+          "copper_bar": 15833,
           "wand": 0,
           "magic_powder": 0
         },
@@ -396,7 +396,7 @@
           "x": 16,
           "y": 0
         },
-        "progress": 0.25,
+        "progress": 0.75,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -418,7 +418,7 @@
           "x": 6,
           "y": 11
         },
-        "progress": 0.75,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -440,14 +440,14 @@
           "x": 7,
           "y": 11
         },
-        "progress": 0.5,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
-          "copper_ore": 3,
+          "copper_ore": 2,
           "copper_bar": 0,
           "wand": 0,
           "magic_powder": 0
@@ -462,7 +462,7 @@
           "x": 8,
           "y": 11
         },
-        "progress": 0.8999999999999999,
+        "progress": 0.7,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -470,7 +470,7 @@
           "dagger": 0,
           "armour": 0,
           "copper_ore": 0,
-          "copper_bar": 5,
+          "copper_bar": 4,
           "wand": 0,
           "magic_powder": 0
         },
@@ -484,7 +484,7 @@
           "x": 7,
           "y": 15
         },
-        "progress": 0.25,
+        "progress": 0.75,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -506,7 +506,7 @@
           "x": 2,
           "y": 11
         },
-        "progress": 0.6666666666666666,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -531,7 +531,7 @@
         "progress": 0.4,
         "constructionProgress": 1,
         "storage": {
-          "iron_ore": 625,
+          "iron_ore": 50643,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
@@ -572,7 +572,7 @@
           "x": 0,
           "y": 19
         },
-        "progress": 0.3333333333333333,
+        "progress": 0.6666666666666666,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -594,7 +594,7 @@
           "x": 17,
           "y": 3
         },
-        "progress": 0.75,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -616,14 +616,14 @@
           "x": 18,
           "y": 3
         },
-        "progress": 0.25,
+        "progress": 0.75,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
-          "copper_ore": 2,
+          "copper_ore": 3,
           "copper_bar": 0,
           "wand": 0,
           "magic_powder": 0
@@ -638,7 +638,7 @@
           "x": 19,
           "y": 3
         },
-        "progress": 0,
+        "progress": 0.6666666666666666,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -646,7 +646,7 @@
           "dagger": 0,
           "armour": 0,
           "copper_ore": 0,
-          "copper_bar": 193,
+          "copper_bar": 15824,
           "wand": 0,
           "magic_powder": 0
         },
@@ -660,7 +660,7 @@
           "x": 18,
           "y": 1
         },
-        "progress": 0.5,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -682,7 +682,7 @@
           "x": 3,
           "y": 13
         },
-        "progress": 0.5,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -704,7 +704,7 @@
           "x": 4,
           "y": 13
         },
-        "progress": 0,
+        "progress": 0.5,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -726,7 +726,7 @@
           "x": 5,
           "y": 13
         },
-        "progress": 0.16666666666666666,
+        "progress": 0.8333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -734,7 +734,7 @@
           "dagger": 0,
           "armour": 0,
           "copper_ore": 0,
-          "copper_bar": 190,
+          "copper_bar": 15822,
           "wand": 0,
           "magic_powder": 0
         },
@@ -748,7 +748,7 @@
           "x": 1,
           "y": 14
         },
-        "progress": 0.25,
+        "progress": 0.75,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -770,7 +770,7 @@
           "x": 16,
           "y": 5
         },
-        "progress": 0.75,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -792,14 +792,14 @@
           "x": 17,
           "y": 5
         },
-        "progress": 0.25,
+        "progress": 0.75,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
-          "copper_ore": 2,
+          "copper_ore": 3,
           "copper_bar": 0,
           "wand": 0,
           "magic_powder": 0
@@ -814,7 +814,7 @@
           "x": 18,
           "y": 5
         },
-        "progress": 0.3333333333333333,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -822,7 +822,7 @@
           "dagger": 0,
           "armour": 0,
           "copper_ore": 0,
-          "copper_bar": 189,
+          "copper_bar": 15819,
           "wand": 0,
           "magic_powder": 0
         },
@@ -836,7 +836,7 @@
           "x": 17,
           "y": 8
         },
-        "progress": 0.5,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -858,7 +858,7 @@
           "x": 14,
           "y": 8
         },
-        "progress": 0,
+        "progress": 0.3333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -883,7 +883,7 @@
         "progress": 0.4,
         "constructionProgress": 1,
         "storage": {
-          "iron_ore": 598,
+          "iron_ore": 50617,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
@@ -924,7 +924,7 @@
           "x": 15,
           "y": 12
         },
-        "progress": 0.6666666666666666,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -946,7 +946,7 @@
           "x": 22,
           "y": 3
         },
-        "progress": 0.75,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -968,7 +968,7 @@
           "x": 23,
           "y": 3
         },
-        "progress": 0.75,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -990,7 +990,7 @@
           "x": 24,
           "y": 3
         },
-        "progress": 0.6,
+        "progress": 0.4,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1012,7 +1012,7 @@
           "x": 29,
           "y": 3
         },
-        "progress": 0.25,
+        "progress": 0.75,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1034,7 +1034,7 @@
           "x": 9,
           "y": 18
         },
-        "progress": 0,
+        "progress": 0.5,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1056,7 +1056,7 @@
           "x": 10,
           "y": 18
         },
-        "progress": 0.5,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1078,7 +1078,7 @@
           "x": 11,
           "y": 18
         },
-        "progress": 0.5,
+        "progress": 0.30000000000000004,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1086,7 +1086,7 @@
           "dagger": 0,
           "armour": 0,
           "copper_ore": 0,
-          "copper_bar": 4,
+          "copper_bar": 3,
           "wand": 0,
           "magic_powder": 0
         },
@@ -1100,7 +1100,7 @@
           "x": 10,
           "y": 19
         },
-        "progress": 0.75,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1122,7 +1122,7 @@
           "x": 13,
           "y": 15
         },
-        "progress": 0.3333333333333333,
+        "progress": 0.6666666666666666,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1147,7 +1147,7 @@
         "progress": 0.6000000000000001,
         "constructionProgress": 1,
         "storage": {
-          "iron_ore": 587,
+          "iron_ore": 50605,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
@@ -1188,7 +1188,7 @@
           "x": 14,
           "y": 16
         },
-        "progress": 0.6666666666666666,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1210,7 +1210,7 @@
           "x": 18,
           "y": 10
         },
-        "progress": 0.5,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1232,14 +1232,14 @@
           "x": 19,
           "y": 10
         },
-        "progress": 0.75,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
-          "copper_ore": 3,
+          "copper_ore": 2,
           "copper_bar": 0,
           "wand": 0,
           "magic_powder": 0
@@ -1254,7 +1254,7 @@
           "x": 20,
           "y": 10
         },
-        "progress": 0.6666666666666666,
+        "progress": 0.3333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1262,7 +1262,7 @@
           "dagger": 0,
           "armour": 0,
           "copper_ore": 0,
-          "copper_bar": 182,
+          "copper_bar": 15813,
           "wand": 0,
           "magic_powder": 0
         },
@@ -1276,7 +1276,7 @@
           "x": 24,
           "y": 10
         },
-        "progress": 0.25,
+        "progress": 0.75,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1298,7 +1298,7 @@
           "x": 16,
           "y": 15
         },
-        "progress": 0,
+        "progress": 0.5,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1320,14 +1320,14 @@
           "x": 17,
           "y": 15
         },
-        "progress": 0.25,
+        "progress": 0.75,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
-          "copper_ore": 2,
+          "copper_ore": 3,
           "copper_bar": 0,
           "wand": 0,
           "magic_powder": 0
@@ -1342,7 +1342,7 @@
           "x": 18,
           "y": 15
         },
-        "progress": 0.6666666666666666,
+        "progress": 0.3333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1350,7 +1350,7 @@
           "dagger": 0,
           "armour": 0,
           "copper_ore": 0,
-          "copper_bar": 181,
+          "copper_bar": 15811,
           "wand": 0,
           "magic_powder": 0
         },
@@ -1364,7 +1364,7 @@
           "x": 24,
           "y": 15
         },
-        "progress": 0.75,
+        "progress": 0.25,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1386,7 +1386,7 @@
           "x": 22,
           "y": 11
         },
-        "progress": 0,
+        "progress": 0.3333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1411,7 +1411,7 @@
         "progress": 0.2,
         "constructionProgress": 1,
         "storage": {
-          "iron_ore": 576,
+          "iron_ore": 50595,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
@@ -1452,7 +1452,7 @@
           "x": 27,
           "y": 12
         },
-        "progress": 0.6666666666666666,
+        "progress": 0,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1474,7 +1474,7 @@
           "x": 20,
           "y": 15
         },
-        "progress": 0.3333333333333333,
+        "progress": 0.6666666666666666,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1499,7 +1499,7 @@
         "progress": 0,
         "constructionProgress": 1,
         "storage": {
-          "iron_ore": 575,
+          "iron_ore": 50594,
           "iron_bar": 0,
           "dagger": 0,
           "armour": 0,
@@ -1540,7 +1540,7 @@
           "x": 20,
           "y": 18
         },
-        "progress": 0,
+        "progress": 0.3333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1562,7 +1562,7 @@
           "x": 27,
           "y": 18
         },
-        "progress": 0.25,
+        "progress": 0.75,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1584,7 +1584,7 @@
           "x": 28,
           "y": 18
         },
-        "progress": 0,
+        "progress": 0.5,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1606,7 +1606,7 @@
           "x": 29,
           "y": 18
         },
-        "progress": 0.5,
+        "progress": 0.8333333333333333,
         "constructionProgress": 1,
         "storage": {
           "iron_ore": 0,
@@ -1674,12 +1674,7 @@
           "x": 3,
           "y": 2
         },
-        "itemsInTransit": [
-          {
-            "itemType": "iron_ore",
-            "progress": 0.5
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770079922225-ipow",
@@ -1727,12 +1722,7 @@
           "x": 4,
           "y": 5
         },
-        "itemsInTransit": [
-          {
-            "itemType": "copper_ore",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080012757-jn5p",
@@ -1744,12 +1734,7 @@
           "x": 10,
           "y": 1
         },
-        "itemsInTransit": [
-          {
-            "itemType": "iron_ore",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080012757-pkkl",
@@ -1793,7 +1778,7 @@
         "itemsInTransit": [
           {
             "itemType": "iron_ore",
-            "progress": 0.6666666666666666
+            "progress": 0
           }
         ]
       },
@@ -1843,12 +1828,7 @@
           "x": 14,
           "y": 1
         },
-        "itemsInTransit": [
-          {
-            "itemType": "copper_ore",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080217373-tjwo",
@@ -1872,12 +1852,7 @@
           "x": 5,
           "y": 2
         },
-        "itemsInTransit": [
-          {
-            "itemType": "wand",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080280771-0tqt",
@@ -1913,7 +1888,12 @@
           "x": 8,
           "y": 11
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "copper_bar",
+            "progress": 0
+          }
+        ]
       },
       {
         "id": "belt-1770080290836-9oxg",
@@ -1949,7 +1929,12 @@
           "x": 3,
           "y": 11
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "iron_ore",
+            "progress": 0
+          }
+        ]
       },
       {
         "id": "belt-1770080355129-h1rr",
@@ -1993,7 +1978,7 @@
         "itemsInTransit": [
           {
             "itemType": "iron_ore",
-            "progress": 0.3333333333333333
+            "progress": 0.6666666666666666
           }
         ]
       },
@@ -2031,12 +2016,7 @@
           "x": 5,
           "y": 2
         },
-        "itemsInTransit": [
-          {
-            "itemType": "wand",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080380254-v8y6",
@@ -2048,7 +2028,12 @@
           "x": 18,
           "y": 3
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "copper_ore",
+            "progress": 0
+          }
+        ]
       },
       {
         "id": "belt-1770080408396-18eo",
@@ -2060,7 +2045,12 @@
           "x": 4,
           "y": 13
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "copper_ore",
+            "progress": 0
+          }
+        ]
       },
       {
         "id": "belt-1770080408396-ciar",
@@ -2072,12 +2062,7 @@
           "x": 5,
           "y": 13
         },
-        "itemsInTransit": [
-          {
-            "itemType": "copper_bar",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080408396-wr7l",
@@ -2089,12 +2074,7 @@
           "x": 5,
           "y": 2
         },
-        "itemsInTransit": [
-          {
-            "itemType": "wand",
-            "progress": 0.3333333333333333
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080409411-k32k",
@@ -2145,7 +2125,7 @@
         "itemsInTransit": [
           {
             "itemType": "wand",
-            "progress": 0.5
+            "progress": 0
           }
         ]
       },
@@ -2159,7 +2139,12 @@
           "x": 17,
           "y": 5
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "copper_ore",
+            "progress": 0
+          }
+        ]
       },
       {
         "id": "belt-1770080438578-axma",
@@ -2171,12 +2156,7 @@
           "x": 15,
           "y": 8
         },
-        "itemsInTransit": [
-          {
-            "itemType": "iron_ore",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080438578-5zd6",
@@ -2212,7 +2192,12 @@
           "x": 15,
           "y": 8
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "iron_ore",
+            "progress": 0
+          }
+        ]
       },
       {
         "id": "belt-1770080471815-tqbk",
@@ -2260,12 +2245,7 @@
           "x": 23,
           "y": 3
         },
-        "itemsInTransit": [
-          {
-            "itemType": "copper_ore",
-            "progress": 0.5
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080486906-jn7f",
@@ -2277,12 +2257,7 @@
           "x": 10,
           "y": 18
         },
-        "itemsInTransit": [
-          {
-            "itemType": "copper_ore",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080486906-q1ub",
@@ -2294,7 +2269,12 @@
           "x": 11,
           "y": 18
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "copper_bar",
+            "progress": 0
+          }
+        ]
       },
       {
         "id": "belt-1770080486906-n4wn",
@@ -2371,7 +2351,12 @@
           "x": 14,
           "y": 15
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "iron_ore",
+            "progress": 0
+          }
+        ]
       },
       {
         "id": "belt-1770080513098-xm3e",
@@ -2383,7 +2368,12 @@
           "x": 19,
           "y": 10
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "copper_ore",
+            "progress": 0
+          }
+        ]
       },
       {
         "id": "belt-1770080513098-ftyz",
@@ -2410,7 +2400,7 @@
         "itemsInTransit": [
           {
             "itemType": "wand",
-            "progress": 0.8
+            "progress": 0.4
           }
         ]
       },
@@ -2424,12 +2414,7 @@
           "x": 19,
           "y": 10
         },
-        "itemsInTransit": [
-          {
-            "itemType": "copper_ore",
-            "progress": 0.5
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080531266-rxet",
@@ -2441,12 +2426,7 @@
           "x": 17,
           "y": 15
         },
-        "itemsInTransit": [
-          {
-            "itemType": "copper_ore",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080531266-fqbv",
@@ -2473,7 +2453,7 @@
         "itemsInTransit": [
           {
             "itemType": "wand",
-            "progress": 0.6666666666666666
+            "progress": 0.3333333333333333
           }
         ]
       },
@@ -2487,7 +2467,12 @@
           "x": 17,
           "y": 15
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "copper_ore",
+            "progress": 0.5
+          }
+        ]
       },
       {
         "id": "belt-1770080538325-bfu0",
@@ -2499,12 +2484,7 @@
           "x": 23,
           "y": 11
         },
-        "itemsInTransit": [
-          {
-            "itemType": "iron_ore",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080538325-ryo0",
@@ -2549,7 +2529,12 @@
           "x": 23,
           "y": 11
         },
-        "itemsInTransit": []
+        "itemsInTransit": [
+          {
+            "itemType": "iron_ore",
+            "progress": 0
+          }
+        ]
       },
       {
         "id": "belt-1770080540343-6yze",
@@ -2607,12 +2592,7 @@
           "x": 21,
           "y": 15
         },
-        "itemsInTransit": [
-          {
-            "itemType": "iron_ore",
-            "progress": 0
-          }
-        ]
+        "itemsInTransit": []
       },
       {
         "id": "belt-1770080542357-hhgl",
@@ -2651,7 +2631,7 @@
         "itemsInTransit": [
           {
             "itemType": "wand",
-            "progress": 0.5555555555555556
+            "progress": 0.7777777777777779
           }
         ]
       }
@@ -2942,12 +2922,12 @@
     "mapHeight": 20,
     "geologistExplorer": null,
     "kingPenaltyTicksLeft": 0,
-    "lastKingTick": 2713
+    "lastKingTick": 190356
   },
   "meta": {
-    "lastTickAt": 1770082715719,
-    "totalCurrencyEarned": 88181,
-    "totalItemsProduced": 38932
+    "lastTickAt": 1770272375898,
+    "totalCurrencyEarned": 6655069,
+    "totalItemsProduced": 3168225
   },
   "prestige": {
     "starEssence": 0,
@@ -2980,5 +2960,5 @@
     "useROICalculations": true,
     "saveForBetterOptions": true
   },
-  "savedAt": 1770082715719
+  "savedAt": 1770272375898
 }
