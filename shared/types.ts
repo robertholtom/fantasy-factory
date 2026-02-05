@@ -3,7 +3,7 @@ export interface Position {
   y: number;
 }
 
-export type BuildingType = "miner" | "smelter" | "forger" | "shop" | "warehouse" | "geologist";
+export type BuildingType = "miner" | "smelter" | "forger" | "shop" | "warehouse" | "geologist" | "explorer";
 
 export type OreType = "iron" | "copper";
 
@@ -55,6 +55,7 @@ export const CONSTRUCTION_TICKS: Record<BuildingType, number> = {
   shop: 8,
   warehouse: 10,
   geologist: 12,
+  explorer: 15,
 };
 
 export interface BeltItem {
@@ -103,6 +104,7 @@ export interface GameState {
   mapWidth: number;
   mapHeight: number;
   geologistExplorer: GeologistExplorer | null; // Animated character when geologist building exists
+  explorerCharacter: ExplorerCharacter | null; // Animated character when explorer building exists
   kingPenaltyTicksLeft: number;  // 0 = no penalty
   lastKingTick: number;          // Track cooldown
 }
@@ -114,6 +116,7 @@ export const BUILDING_COSTS: Record<BuildingType, number> = {
   shop: 75,
   warehouse: 100,
   geologist: 200,
+  explorer: 400,
 };
 
 // Geologist building settings
@@ -122,12 +125,28 @@ export const GEOLOGIST_DISCOVERY_TICKS_MIN = 10; // Minimum ticks between discov
 export const GEOLOGIST_DISCOVERY_TICKS_MAX = 20; // Maximum ticks between discoveries
 export const GEOLOGIST_MAX_COUNT = 1; // Only one allowed
 
+// Explorer building settings
+export const EXPLORER_UPKEEP = 3; // Cost per tick to operate
+export const EXPLORER_EXPANSION_TICKS_MIN = 25; // Minimum ticks between expansions
+export const EXPLORER_EXPANSION_TICKS_MAX = 40; // Maximum ticks between expansions
+export const EXPLORER_MAX_COUNT = 1; // Only one allowed
+export const EXPLORER_EXPANSION_SIZE = 2; // +2 to width OR height per expansion
+
 // Geologist explorer (animated character that walks around)
 export interface GeologistExplorer {
   position: Position; // Current position (can be fractional for smooth movement)
   targetPosition: Position; // Where the explorer is heading
   searchProgress: number; // 0-1, when 1 = found ore at current location
   ticksUntilDiscovery: number; // Random countdown to next discovery
+}
+
+// Explorer character (walks along map edges to expand territory)
+export interface ExplorerCharacter {
+  position: Position; // Current position (can be fractional for smooth movement)
+  targetPosition: Position; // Where the explorer is heading (along edge)
+  expansionProgress: number; // 0-1, visual progress indicator
+  ticksUntilExpansion: number; // Random countdown to next expansion
+  lastExpandedSide: "right" | "bottom"; // Alternates between sides
 }
 
 // Warehouse wholesale settings
@@ -258,6 +277,7 @@ export interface AutomationSettings {
   autoPlaceBelt: boolean;
   autoPlaceWarehouse: boolean;
   autoPlaceGeologist: boolean;
+  autoPlaceExplorer: boolean;
 
   // Strategy
   autoRecipeSwitch: boolean;

@@ -7,6 +7,7 @@ import {
   GameState,
   Inventory,
   GEOLOGIST_MAX_COUNT,
+  EXPLORER_MAX_COUNT,
 } from "../../shared/types.js";
 import { getState, setState, createInitialState, setPrestige, setUpgrades, setAutomation, setMeta, saveGame } from "./state.js";
 import { createDefaultPrestige, createDefaultUpgrades, createDefaultAutomation, createDefaultMeta } from "./persistence.js";
@@ -55,6 +56,13 @@ export function placeBuilding(
     const existingGeologists = state.buildings.filter(b => b.type === "geologist").length;
     if (existingGeologists >= GEOLOGIST_MAX_COUNT) {
       return { state, error: "Only one geologist building allowed" };
+    }
+  }
+
+  if (type === "explorer") {
+    const existingExplorers = state.buildings.filter(b => b.type === "explorer").length;
+    if (existingExplorers >= EXPLORER_MAX_COUNT) {
+      return { state, error: "Only one explorer building allowed" };
     }
   }
 

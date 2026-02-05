@@ -63,6 +63,7 @@ export function createDefaultAutomation(): AutomationSettings {
     autoPlaceBelt: false,
     autoPlaceWarehouse: false,
     autoPlaceGeologist: false,
+    autoPlaceExplorer: false,
     autoRecipeSwitch: false,
     useAdvancedRecipeLogic: false,
     buildCompleteChains: false,
@@ -184,6 +185,7 @@ function migrateSave(save: GameSave): void {
     save.automation.autoPlaceShop ??= false;
     save.automation.autoPlaceWarehouse ??= false;
     save.automation.autoPlaceGeologist ??= false;
+    save.automation.autoPlaceExplorer ??= false;
     save.automation.buildCompleteChains ??= false;
     save.automation.useAdvancedRecipeLogic ??= false;
     save.automation.useROICalculations ??= false;
@@ -195,6 +197,9 @@ function migrateSave(save: GameSave): void {
     save.state.kingPenaltyTicksLeft ??= 0;
     save.state.lastKingTick ??= 0;
   }
+
+  // Add explorer character field for existing saves
+  save.state.explorerCharacter ??= null;
 
   save.version = SAVE_VERSION;
 }

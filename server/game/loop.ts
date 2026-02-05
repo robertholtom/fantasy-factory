@@ -4,6 +4,7 @@ import {
   Position,
   GameState,
   GeologistExplorer,
+  ExplorerCharacter,
   Inventory,
   KingDemand,
   MultiItemDemand,
@@ -29,12 +30,17 @@ import {
   GEOLOGIST_UPKEEP,
   GEOLOGIST_DISCOVERY_TICKS_MIN,
   GEOLOGIST_DISCOVERY_TICKS_MAX,
+  EXPLORER_UPKEEP,
+  EXPLORER_EXPANSION_TICKS_MIN,
+  EXPLORER_EXPANSION_TICKS_MAX,
+  EXPLORER_EXPANSION_SIZE,
   KING_SPAWN_CHANCE,
   KING_MIN_TICK,
   KING_COOLDOWN_TICKS,
   KING_PRICE_MULTIPLIER,
   KING_PENALTY_DURATION,
   MULTI_ITEM_BONUS,
+  OreType,
 } from "../../shared/types.js";
 import { getState, getUpgrades, getPrestige, getAutomation, tickAutoSave, updateMetaStats, getMeta } from "./state.js";
 import { getModifiers } from "./modifiers.js";
@@ -337,13 +343,66 @@ function tick(): void {
     state.geologistExplorer = null;
   }
 
-  // 6. Automation
+  // 6. Explorer character movement and map expansion
+  const activeExplorer = state.buildings.find(
+    b => b.type === "explorer" && b.constructionProgress >= 1
+  );
+
+  if (activeExplorer) {
+    // Deduct upkeep if player can afford it
+    if (state.currency >= EXPLORER_UPKEEP) {
+      state.currency -= EXPLORER_UPKEEP;
+
+      // Initialize explorer character if not exists
+      if (!state.explorerCharacter) {
+        state.explorerCharacter = createExplorerCharacter(state, activeExplorer.position);
+      }
+
+      const explorer = state.explorerCharacter;
+
+      // Move explorer along map edges (0.4 cells/tick)
+      const moveSpeed = 0.4;
+      const dx = explorer.targetPosition.x - explorer.position.x;
+      const dy = explorer.targetPosition.y - explorer.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist > moveSpeed) {
+        explorer.position.x += (dx / dist) * moveSpeed;
+        explorer.position.y += (dy / dist) * moveSpeed;
+      } else {
+        // Reached target, pick new edge target
+        explorer.position.x = explorer.targetPosition.x;
+        explorer.position.y = explorer.targetPosition.y;
+        explorer.targetPosition = pickEdgeTarget(state, explorer);
+      }
+
+      // Count down to expansion
+      explorer.ticksUntilExpansion--;
+
+      if (explorer.ticksUntilExpansion <= 0) {
+        // Expand the map
+        expandMap(state, explorer);
+
+        // Reset countdown
+        explorer.ticksUntilExpansion = randomInt(EXPLORER_EXPANSION_TICKS_MIN, EXPLORER_EXPANSION_TICKS_MAX);
+      }
+
+      // Update expansion progress for visual effect
+      const totalTicks = (EXPLORER_EXPANSION_TICKS_MIN + EXPLORER_EXPANSION_TICKS_MAX) / 2;
+      explorer.expansionProgress = 1 - (explorer.ticksUntilExpansion / totalTicks);
+    }
+  } else {
+    // No active explorer, remove character
+    state.explorerCharacter = null;
+  }
+
+  // 7. Automation
   const automation = getAutomation();
   if (automation.enabled) {
     runAutomation(state);
   }
 
-  // 7. Update meta stats and auto-save
+  // 8. Update meta stats and auto-save
   updateMetaStats(currencyEarnedThisTick, itemsProducedThisTick);
   tickAutoSave();
 }
@@ -518,6 +577,73 @@ function canFulfillMultiItemDemand(storage: Inventory, demand: MultiItemDemand):
 function fulfillMultiItemDemand(storage: Inventory, demand: MultiItemDemand): void {
   for (const { item, quantity } of demand.items) {
     storage[item] -= quantity;
+  }
+}
+
+function createExplorerCharacter(state: GameState, startPos: Position): ExplorerCharacter {
+  return {
+    position: { x: startPos.x, y: startPos.y },
+    targetPosition: pickEdgeTarget(state, null),
+    expansionProgress: 0,
+    ticksUntilExpansion: randomInt(EXPLORER_EXPANSION_TICKS_MIN, EXPLORER_EXPANSION_TICKS_MAX),
+    lastExpandedSide: "right", // Will start with bottom on first expansion
+  };
+}
+
+function pickEdgeTarget(state: GameState, explorer: ExplorerCharacter | null): Position {
+  // Pick a position along the right or bottom edge of the map
+  const edge = Math.random() < 0.5 ? "right" : "bottom";
+
+  if (edge === "right") {
+    return {
+      x: state.mapWidth - 1,
+      y: Math.floor(Math.random() * state.mapHeight),
+    };
+  } else {
+    return {
+      x: Math.floor(Math.random() * state.mapWidth),
+      y: state.mapHeight - 1,
+    };
+  }
+}
+
+function expandMap(state: GameState, explorer: ExplorerCharacter): void {
+  // Alternate between expanding right and bottom
+  const side = explorer.lastExpandedSide === "right" ? "bottom" : "right";
+  explorer.lastExpandedSide = side;
+
+  if (side === "right") {
+    state.mapWidth += EXPLORER_EXPANSION_SIZE;
+  } else {
+    state.mapHeight += EXPLORER_EXPANSION_SIZE;
+  }
+
+  // 25% chance to spawn ore in the newly expanded area
+  if (Math.random() < 0.25) {
+    const oreType: OreType = Math.random() < 0.5 ? "iron" : "copper";
+    let x: number, y: number;
+
+    if (side === "right") {
+      // New area is on the right
+      x = state.mapWidth - Math.floor(Math.random() * EXPLORER_EXPANSION_SIZE) - 1;
+      y = Math.floor(Math.random() * state.mapHeight);
+    } else {
+      // New area is on the bottom
+      x = Math.floor(Math.random() * state.mapWidth);
+      y = state.mapHeight - Math.floor(Math.random() * EXPLORER_EXPANSION_SIZE) - 1;
+    }
+
+    // Check not occupied
+    const occupied = state.buildings.some(b => b.position.x === x && b.position.y === y) ||
+                     state.oreNodes.some(n => n.position.x === x && n.position.y === y);
+
+    if (!occupied) {
+      state.oreNodes.push({
+        id: `ore-expanded-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        position: { x, y },
+        type: oreType,
+      });
+    }
   }
 }
 

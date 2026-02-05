@@ -1,4 +1,4 @@
-import { GameState, Belt, Building, OreNode, ItemType, getBeltTravelTime, GeologistExplorer } from "../../../shared/types";
+import { GameState, Belt, Building, OreNode, ItemType, getBeltTravelTime, GeologistExplorer, ExplorerCharacter } from "../../../shared/types";
 
 // SVG icons as data URLs
 const ICONS: Record<string, string> = {
@@ -104,6 +104,56 @@ const ICONS: Record<string, string> = {
       <!-- Boots -->
       <ellipse cx="13" cy="27" rx="3" ry="2" fill="#4a3020"/>
       <ellipse cx="19" cy="27" rx="3" ry="2" fill="#4a3020"/>
+    </svg>
+  `)}`,
+  explorer: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect x="2" y="2" width="28" height="28" rx="4" fill="#1a3a4a"/>
+      <path d="M6 24 L6 14 L12 10 L20 10 L26 14 L26 24 Z" fill="#2a4a5a"/>
+      <rect x="10" y="14" width="12" height="10" fill="#1a3a4a"/>
+      <!-- Compass rose -->
+      <circle cx="16" cy="16" r="8" fill="#305060"/>
+      <circle cx="16" cy="16" r="6" fill="#406070"/>
+      <path d="M16 10 L17 16 L16 14 L15 16 Z" fill="#ff4040"/>
+      <path d="M16 22 L17 16 L16 18 L15 16 Z" fill="#ffffff"/>
+      <path d="M10 16 L16 17 L14 16 L16 15 Z" fill="#ffffff"/>
+      <path d="M22 16 L16 17 L18 16 L16 15 Z" fill="#ffffff"/>
+      <circle cx="16" cy="16" r="1.5" fill="#ffd700"/>
+      <!-- Map scroll -->
+      <rect x="22" y="20" width="6" height="8" rx="1" fill="#d4a574"/>
+      <rect x="22" y="20" width="6" height="2" fill="#8b6914"/>
+      <rect x="22" y="26" width="6" height="2" fill="#8b6914"/>
+    </svg>
+  `)}`,
+  explorer_character: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <!-- Body -->
+      <ellipse cx="16" cy="24" rx="6" ry="4" fill="#3a4a5a"/>
+      <!-- Torso -->
+      <rect x="12" y="14" width="8" height="10" rx="2" fill="#406080"/>
+      <!-- Head -->
+      <circle cx="16" cy="10" r="6" fill="#ffccaa"/>
+      <!-- Hat (wide brim explorer) -->
+      <ellipse cx="16" cy="6" rx="9" ry="2.5" fill="#2a5a6a"/>
+      <ellipse cx="16" cy="5" rx="5" ry="3" fill="#3a7a8a"/>
+      <rect x="14" y="3" width="4" height="2" fill="#4a9aaa"/>
+      <!-- Eyes -->
+      <circle cx="14" cy="10" r="1" fill="#333"/>
+      <circle cx="18" cy="10" r="1" fill="#333"/>
+      <!-- Smile -->
+      <path d="M14 13 Q16 15 18 13" stroke="#833" fill="none" stroke-width="1"/>
+      <!-- Binoculars -->
+      <circle cx="6" cy="14" r="3" fill="#444"/>
+      <circle cx="6" cy="14" r="2" fill="#60a0c0"/>
+      <rect x="6" y="12" width="6" height="4" fill="#444"/>
+      <!-- Map in hand -->
+      <rect x="22" y="16" width="6" height="8" rx="1" fill="#d4a574"/>
+      <line x1="23" y1="18" x2="27" y2="18" stroke="#8b6914" stroke-width="1"/>
+      <line x1="23" y1="20" x2="27" y2="20" stroke="#8b6914" stroke-width="1"/>
+      <line x1="23" y1="22" x2="26" y2="22" stroke="#8b6914" stroke-width="1"/>
+      <!-- Boots -->
+      <ellipse cx="13" cy="27" rx="3" ry="2" fill="#2a3a4a"/>
+      <ellipse cx="19" cy="27" rx="3" ry="2" fill="#2a3a4a"/>
     </svg>
   `)}`,
   ore_iron: `data:image/svg+xml,${encodeURIComponent(`
@@ -305,6 +355,7 @@ const COLORS: Record<string, string> = {
   shop: "#d0a030",
   warehouse: "#6060a0",
   geologist: "#40a040",
+  explorer: "#3080a0",
   progressBg: "#333",
   progressFill: "#eee",
   ghost: "rgba(255, 255, 255, 0.3)",
@@ -387,6 +438,11 @@ export function render(
   // Geologist explorer (animated character walking around)
   if (state.geologistExplorer) {
     drawGeologistExplorer(ctx, state.geologistExplorer, cellSize, animationProgress);
+  }
+
+  // Explorer character (walks along map edges)
+  if (state.explorerCharacter) {
+    drawExplorerCharacter(ctx, state.explorerCharacter, cellSize, animationProgress);
   }
 
   // Ghost preview for building placement
@@ -803,6 +859,81 @@ function drawGeologistExplorer(
     const targetX = explorer.targetPosition.x * cellSize + cellSize / 2;
     const targetY = explorer.targetPosition.y * cellSize + cellSize / 2;
     ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath();
+    ctx.moveTo(x + size / 2, y + size / 2);
+    ctx.lineTo(targetX, targetY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function drawExplorerCharacter(
+  ctx: CanvasRenderingContext2D,
+  explorer: ExplorerCharacter,
+  cellSize: number,
+  animationProgress: number
+): void {
+  const size = cellSize * 0.8;
+
+  // Add a slight bobbing animation while walking
+  const dx = explorer.targetPosition.x - explorer.position.x;
+  const dy = explorer.targetPosition.y - explorer.position.y;
+  const isMoving = Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1;
+  const bobOffset = isMoving ? Math.sin(animationProgress * Math.PI * 4) * 2 : 0;
+
+  // Calculate position (center of cell)
+  const x = explorer.position.x * cellSize + cellSize / 2 - size / 2;
+  const y = explorer.position.y * cellSize + cellSize / 2 - size / 2 + bobOffset;
+
+  // Draw shadow
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.beginPath();
+  ctx.ellipse(x + size / 2, y + size + 2, size / 3, size / 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Draw explorer character icon
+  const img = iconImages["explorer_character"];
+  if (img && img.complete) {
+    // Flip icon based on movement direction
+    ctx.save();
+    if (dx < -0.1) {
+      ctx.translate(x + size, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0, size, size);
+    } else {
+      ctx.drawImage(img, x, y, size, size);
+    }
+    ctx.restore();
+  } else {
+    // Fallback: simple circle (teal color for explorer)
+    ctx.fillStyle = "#406080";
+    ctx.beginPath();
+    ctx.arc(x + size / 2, y + size / 2, size / 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffccaa";
+    ctx.beginPath();
+    ctx.arc(x + size / 2, y + size / 3, size / 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw expansion indicator (compass/map glow when close to expanding)
+  if (explorer.expansionProgress > 0.5) {
+    const pulseSize = 4 + (explorer.expansionProgress - 0.5) * 8;
+    const alpha = 0.3 + (explorer.expansionProgress - 0.5) * 0.6;
+    ctx.strokeStyle = `rgba(64, 160, 200, ${alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x + size / 2, y + size / 2, size / 2 + pulseSize, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Draw line to target position (faint dotted line)
+  if (isMoving) {
+    const targetX = explorer.targetPosition.x * cellSize + cellSize / 2;
+    const targetY = explorer.targetPosition.y * cellSize + cellSize / 2;
+    ctx.strokeStyle = "rgba(64, 160, 200, 0.2)";
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 5]);
     ctx.beginPath();

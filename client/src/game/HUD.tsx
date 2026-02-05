@@ -6,6 +6,8 @@ import {
   BELT_COST,
   GEOLOGIST_MAX_COUNT,
   GEOLOGIST_UPKEEP,
+  EXPLORER_MAX_COUNT,
+  EXPLORER_UPKEEP,
   PrestigeData,
   UpgradeState,
   AutomationSettings,
@@ -300,6 +302,17 @@ export default function HUD({
             title={`Finds new ore nodes. Upkeep: $${GEOLOGIST_UPKEEP}/tick`}
           >
             Geologist ${BUILDING_COSTS.geologist}
+          </button>
+          <button
+            onClick={() => onBuy("explorer")}
+            disabled={
+              currency < BUILDING_COSTS.explorer ||
+              inPlacement ||
+              state.buildings.filter(b => b.type === "explorer").length >= EXPLORER_MAX_COUNT
+            }
+            title={`Expands the map over time. Upkeep: $${EXPLORER_UPKEEP}/tick`}
+          >
+            Explorer ${BUILDING_COSTS.explorer}
           </button>
           <button
             onClick={onStartBelt}
@@ -655,6 +668,18 @@ export default function HUD({
               disabled={!localAutomation.enabled}
             />
             Auto Geologists
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.autoPlaceExplorer ?? false}
+              onChange={() => toggle("autoPlaceExplorer")}
+              disabled={!localAutomation.enabled}
+            />
+            Auto Explorers
           </label>
         </div>
 

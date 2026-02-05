@@ -30,6 +30,7 @@ function makeState(overrides?: Partial<GameState>): GameState {
     mapWidth: 30,
     mapHeight: 20,
     geologistExplorer: null,
+    explorerCharacter: null,
     kingPenaltyTicksLeft: 0,
     lastKingTick: 0,
     ...overrides,
@@ -46,6 +47,7 @@ function enableFullAutomation(): void {
     autoPlaceBelt: true,
     autoPlaceWarehouse: true,
     autoPlaceGeologist: false,
+    autoPlaceExplorer: false,
     autoRecipeSwitch: true,
     useAdvancedRecipeLogic: true,
     buildCompleteChains: true,
@@ -1164,6 +1166,114 @@ describe("game loop", () => {
       expect(state.buildings[1].storage.dagger).toBe(0);
       expect(state.buildings[1].npcQueue).toHaveLength(3);
       expect(state.currency).toBe(135);
+    });
+  });
+
+  describe("explorer", () => {
+    it("initializes explorer character when building completes", () => {
+      setState(makeState({
+        currency: 100,
+        buildings: [makeBuilding({ id: "e1", type: "explorer", position: { x: 5, y: 5 } })],
+      }));
+      startGameLoop();
+      tickN(1);
+      const state = getState();
+      // Explorer character should be initialized
+      expect(state.explorerCharacter).not.toBeNull();
+      expect(state.explorerCharacter?.position).toBeDefined();
+      expect(state.explorerCharacter?.targetPosition).toBeDefined();
+      expect(state.explorerCharacter?.ticksUntilExpansion).toBeGreaterThan(0);
+    });
+
+    it("removes character when building demolished", () => {
+      setState(makeState({
+        currency: 100,
+        buildings: [makeBuilding({ id: "e1", type: "explorer", position: { x: 5, y: 5 } })],
+        explorerCharacter: {
+          position: { x: 10, y: 10 },
+          targetPosition: { x: 15, y: 15 },
+          expansionProgress: 0.5,
+          ticksUntilExpansion: 20,
+          lastExpandedSide: "right",
+        },
+      }));
+      startGameLoop();
+      tickN(1);
+      // Character exists
+      expect(getState().explorerCharacter).not.toBeNull();
+      // Remove building
+      const state = getState();
+      state.buildings = [];
+      setState(state);
+      tickN(1);
+      // Character should be removed
+      expect(getState().explorerCharacter).toBeNull();
+    });
+
+    it("expands map after countdown", () => {
+      setState(makeState({
+        currency: 200, // Enough for upkeep
+        mapWidth: 30,
+        mapHeight: 20,
+        buildings: [makeBuilding({ id: "e1", type: "explorer", position: { x: 5, y: 5 } })],
+        explorerCharacter: {
+          position: { x: 29, y: 10 },
+          targetPosition: { x: 29, y: 15 },
+          expansionProgress: 0.9,
+          ticksUntilExpansion: 1, // Will expand next tick
+          lastExpandedSide: "right",
+        },
+      }));
+      startGameLoop();
+      tickN(1);
+      const state = getState();
+      // Map should have expanded (either width or height increased by 2)
+      const expanded = state.mapWidth > 30 || state.mapHeight > 20;
+      expect(expanded).toBe(true);
+    });
+
+    it("does not expand without enough currency for upkeep", () => {
+      setState(makeState({
+        currency: 1, // Not enough for upkeep ($3)
+        mapWidth: 30,
+        mapHeight: 20,
+        buildings: [makeBuilding({ id: "e1", type: "explorer", position: { x: 5, y: 5 } })],
+        explorerCharacter: {
+          position: { x: 29, y: 10 },
+          targetPosition: { x: 29, y: 15 },
+          expansionProgress: 0.9,
+          ticksUntilExpansion: 1,
+          lastExpandedSide: "right",
+        },
+      }));
+      startGameLoop();
+      tickN(1);
+      const state = getState();
+      // Map should NOT have expanded
+      expect(state.mapWidth).toBe(30);
+      expect(state.mapHeight).toBe(20);
+    });
+
+    it("character moves toward target", () => {
+      const initialPos = { x: 10, y: 10 };
+      const targetPos = { x: 29, y: 10 };
+      setState(makeState({
+        currency: 100,
+        buildings: [makeBuilding({ id: "e1", type: "explorer", position: { x: 5, y: 5 } })],
+        explorerCharacter: {
+          position: { ...initialPos },
+          targetPosition: { ...targetPos },
+          expansionProgress: 0,
+          ticksUntilExpansion: 30,
+          lastExpandedSide: "bottom",
+        },
+      }));
+      startGameLoop();
+      tickN(1);
+      const state = getState();
+      // Character should have moved toward target (0.4 cells/tick speed)
+      expect(state.explorerCharacter).not.toBeNull();
+      expect(state.explorerCharacter!.position.x).toBeGreaterThan(initialPos.x);
     });
   });
 });

@@ -29,7 +29,7 @@ function emptyInventory(): Inventory {
 // === ROI CALCULATION FUNCTIONS (from AI mode) ===
 
 interface BuildAction {
-  type: "miner" | "smelter" | "forger" | "shop" | "warehouse" | "geologist" | "chain" | "belt";
+  type: "miner" | "smelter" | "forger" | "shop" | "warehouse" | "geologist" | "explorer" | "chain" | "belt";
   cost: number;
   profitPerTick: number;
   roi: number;
@@ -439,6 +439,7 @@ export function runAutomation(state: GameState): void {
   const shops = state.buildings.filter(b => b.type === "shop");
   const warehouses = state.buildings.filter(b => b.type === "warehouse");
   const geologists = state.buildings.filter(b => b.type === "geologist");
+  const explorers = state.buildings.filter(b => b.type === "explorer");
 
   const minedPositions = new Set(miners.map(m => posKey(m.position)));
   let unmined = state.oreNodes.filter(n => !minedPositions.has(posKey(n.position)));
@@ -740,6 +741,30 @@ export function runAutomation(state: GameState): void {
       }
     }
 
+    // Action: Build explorer (when map is getting cramped)
+    if (settings.autoPlaceExplorer && explorers.length === 0 && shops.length > 0 && forgers.length >= 3) {
+      const shop = shops[0];
+      const explorerPos = findEmptyNear(shop.position, reserved);
+
+      // Build explorer when map is filling up (many buildings relative to map size)
+      const mapArea = state.mapWidth * state.mapHeight;
+      const buildingDensity = state.buildings.length / mapArea;
+
+      if (explorerPos && (buildingDensity > 0.05 || state.currency >= 800)) {
+        const cost = BUILDING_COSTS.explorer;
+        const estimatedProfit = 150 / 35; // Value from map expansion
+
+        actions.push({
+          type: "explorer",
+          cost,
+          profitPerTick: estimatedProfit,
+          roi: cost / estimatedProfit,
+          description: "Build explorer",
+          execute: () => placeBuilding("explorer", explorerPos),
+        });
+      }
+    }
+
     // === DECISION: Pick best action ===
     if (actions.length === 0) {
       if (settings.autoRecipeSwitch) optimizeRecipes(state);
@@ -1034,6 +1059,22 @@ export function runAutomation(state: GameState): void {
     }
   }
 
+  // Build explorer if map is getting cramped
+  if (settings.autoPlaceExplorer && explorers.length === 0 && shops.length > 0) {
+    const mapArea = state.mapWidth * state.mapHeight;
+    const buildingDensity = state.buildings.length / mapArea;
+    if (buildingDensity > 0.08) {
+      const cost = BUILDING_COSTS.explorer;
+      if (availableCurrency >= cost) {
+        const shop = shops[0];
+        const explorerPos = findEmptyNear(shop.position, reserved);
+        if (explorerPos && placeBuilding("explorer", explorerPos)) {
+          return;
+        }
+      }
+    }
+  }
+
   // Recipe optimization
   if (settings.autoRecipeSwitch) {
     optimizeRecipes(state);
@@ -1052,6 +1093,7 @@ export function applySmartDefaults(): { automation: AutomationSettings } {
     autoPlaceBelt: true,
     autoPlaceWarehouse: true,
     autoPlaceGeologist: false,
+    autoPlaceExplorer: false,
     buildCompleteChains: true,
     autoRecipeSwitch: true,
     useAdvancedRecipeLogic: true,
