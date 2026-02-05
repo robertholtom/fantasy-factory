@@ -113,13 +113,13 @@ describe("game loop", () => {
   });
 
   describe("smelter production", () => {
-    it("produces 1 bar when given 2 ore after 5 ticks", () => {
+    it("produces 1 bar when given 3 ore after 5 ticks", () => {
       setState(makeState({
         buildings: [makeBuilding({
           id: "s1",
           type: "smelter",
           position: { x: 0, y: 0 },
-          storage: { ...emptyInventory(), iron_ore: 2 },
+          storage: { ...emptyInventory(), iron_ore: 3 },
         })],
       }));
       startGameLoop();
@@ -135,7 +135,7 @@ describe("game loop", () => {
           id: "s1",
           type: "smelter",
           position: { x: 0, y: 0 },
-          storage: { ...emptyInventory(), iron_ore: 1 },
+          storage: { ...emptyInventory(), iron_ore: 2 },
         })],
       }));
       startGameLoop();
@@ -147,14 +147,14 @@ describe("game loop", () => {
   });
 
   describe("forger production", () => {
-    it("produces dagger from 1 bar in 5 ticks", () => {
+    it("produces dagger from 2 bars in 5 ticks", () => {
       setState(makeState({
         buildings: [makeBuilding({
           id: "f1",
           type: "forger",
           position: { x: 0, y: 0 },
           recipe: "dagger",
-          storage: { ...emptyInventory(), iron_bar: 1 },
+          storage: { ...emptyInventory(), iron_bar: 2 },
         })],
       }));
       startGameLoop();
@@ -166,14 +166,14 @@ describe("game loop", () => {
       expect(forger.storage.iron_bar).toBe(0);
     });
 
-    it("produces armour from 2 bars in 8 ticks", () => {
+    it("produces armour from 3 bars in 8 ticks", () => {
       setState(makeState({
         buildings: [makeBuilding({
           id: "f1",
           type: "forger",
           position: { x: 0, y: 0 },
           recipe: "armour",
-          storage: { ...emptyInventory(), iron_bar: 2 },
+          storage: { ...emptyInventory(), iron_bar: 3 },
         })],
       }));
       startGameLoop();
@@ -192,7 +192,7 @@ describe("game loop", () => {
           type: "forger",
           position: { x: 0, y: 0 },
           recipe: "armour",
-          storage: { ...emptyInventory(), iron_bar: 1 },
+          storage: { ...emptyInventory(), iron_bar: 2 },
         })],
       }));
       startGameLoop();
@@ -393,13 +393,13 @@ describe("game loop", () => {
   });
 
   describe("copper smelter production", () => {
-    it("produces 1 copper bar from 2 copper ore after 4 ticks", () => {
+    it("produces 1 copper bar from 3 copper ore after 4 ticks", () => {
       setState(makeState({
         buildings: [makeBuilding({
           id: "s1",
           type: "smelter",
           position: { x: 0, y: 0 },
-          storage: { ...emptyInventory(), copper_ore: 2 },
+          storage: { ...emptyInventory(), copper_ore: 3 },
         })],
       }));
       startGameLoop();
@@ -415,7 +415,7 @@ describe("game loop", () => {
           id: "s1",
           type: "smelter",
           position: { x: 0, y: 0 },
-          storage: { ...emptyInventory(), iron_ore: 2, copper_ore: 2 },
+          storage: { ...emptyInventory(), iron_ore: 3, copper_ore: 3 },
         })],
       }));
       startGameLoop();
@@ -427,14 +427,14 @@ describe("game loop", () => {
   });
 
   describe("copper forger production", () => {
-    it("produces wand from 1 copper bar in 6 ticks", () => {
+    it("produces wand from 2 copper bars in 6 ticks", () => {
       setState(makeState({
         buildings: [makeBuilding({
           id: "f1",
           type: "forger",
           position: { x: 0, y: 0 },
           recipe: "wand",
-          storage: { ...emptyInventory(), copper_bar: 1 },
+          storage: { ...emptyInventory(), copper_bar: 2 },
         })],
       }));
       startGameLoop();
@@ -446,14 +446,14 @@ describe("game loop", () => {
       expect(forger.storage.copper_bar).toBe(0);
     });
 
-    it("produces magic_powder from 3 copper bars in 10 ticks", () => {
+    it("produces magic_powder from 4 copper bars in 10 ticks", () => {
       setState(makeState({
         buildings: [makeBuilding({
           id: "f1",
           type: "forger",
           position: { x: 0, y: 0 },
           recipe: "magic_powder",
-          storage: { ...emptyInventory(), copper_bar: 3 },
+          storage: { ...emptyInventory(), copper_bar: 4 },
         })],
       }));
       startGameLoop();
@@ -514,7 +514,7 @@ describe("game loop", () => {
       // 3 filler NPCs remain (they want armour, not dagger)
       expect(shop.npcQueue).toHaveLength(3);
       expect(shop.storage.dagger).toBe(0);
-      expect(state.currency).toBe(120); // 100 + 20 (dagger base price)
+      expect(state.currency).toBe(135); // 100 + 35 (dagger base price)
     });
 
     it("warrior pays 1.5x for iron items", () => {
@@ -535,8 +535,8 @@ describe("game loop", () => {
       startGameLoop();
       tickN(1);
       const state = getState();
-      // Warrior pays 1.5x for dagger (iron item): 20 * 1.5 = 30
-      expect(state.currency).toBe(130);
+      // Warrior pays 1.5x for dagger (iron item): 35 * 1.5 = 52.5 → 53
+      expect(state.currency).toBe(153);
     });
 
     it("mage pays 0.75x for iron items", () => {
@@ -557,8 +557,8 @@ describe("game loop", () => {
       startGameLoop();
       tickN(1);
       const state = getState();
-      // Mage pays 0.75x for armour (iron item): 40 * 0.75 = 30
-      expect(state.currency).toBe(130);
+      // Mage pays 0.75x for armour (iron item): 60 * 0.75 = 45
+      expect(state.currency).toBe(145);
     });
 
     it("NPC leaves when patience runs out", () => {
@@ -626,8 +626,8 @@ describe("game loop", () => {
       startGameLoop();
       tickN(1);
       const state = getState();
-      // Mage pays 1.5x for wand (copper item): 25 * 1.5 = 37.5 → 38 (rounded)
-      expect(state.currency).toBe(138);
+      // Mage pays 1.5x for wand (copper item): 40 * 1.5 = 60
+      expect(state.currency).toBe(160);
     });
 
     it("warrior pays 0.75x for copper items", () => {
@@ -648,8 +648,8 @@ describe("game loop", () => {
       startGameLoop();
       tickN(1);
       const state = getState();
-      // Warrior pays 0.75x for magic_powder (copper item): 45 * 0.75 = 33.75 → 34
-      expect(state.currency).toBe(134);
+      // Warrior pays 0.75x for magic_powder (copper item): 65 * 0.75 = 48.75 → 49
+      expect(state.currency).toBe(149);
     });
 
     it("collector pays 1.25x for iron items", () => {
@@ -670,8 +670,8 @@ describe("game loop", () => {
       startGameLoop();
       tickN(1);
       const state = getState();
-      // Collector pays 1.25x for dagger (iron item): 20 * 1.25 = 25
-      expect(state.currency).toBe(125);
+      // Collector pays 1.25x for dagger (iron item): 35 * 1.25 = 43.75 → 44
+      expect(state.currency).toBe(144);
     });
 
     it("collector pays 1.25x for copper items", () => {
@@ -692,8 +692,8 @@ describe("game loop", () => {
       startGameLoop();
       tickN(1);
       const state = getState();
-      // Collector pays 1.25x for wand (copper item): 25 * 1.25 = 31.25 → 31 (rounded)
-      expect(state.currency).toBe(131);
+      // Collector pays 1.25x for wand (copper item): 40 * 1.25 = 50
+      expect(state.currency).toBe(150);
     });
 
     it("serves multiple NPCs in same tick when items available", () => {
@@ -718,7 +718,7 @@ describe("game loop", () => {
       // Both dagger NPCs served, 2 filler NPCs remain
       expect(shop.npcQueue).toHaveLength(2);
       expect(shop.storage.dagger).toBe(0);
-      expect(state.currency).toBe(140); // 100 + 20 + 20
+      expect(state.currency).toBe(170); // 100 + 35 + 35
     });
 
     it("serves NPC before patience check (edge case)", () => {
@@ -740,7 +740,7 @@ describe("game loop", () => {
       tickN(1);
       const state = getState();
       // NPC served before patience ran out
-      expect(state.currency).toBe(120);
+      expect(state.currency).toBe(135);
     });
 
     it("patience decrements over multiple ticks", () => {
@@ -791,7 +791,7 @@ describe("game loop", () => {
       expect(shop2.npcQueue.find(n => n.id === "npc2")).toBeUndefined(); // npc2 served
       expect(shop1.storage.dagger).toBe(0);
       expect(shop2.storage.wand).toBe(0);
-      expect(state.currency).toBe(145); // 100 + 20 (dagger) + 25 (wand)
+      expect(state.currency).toBe(175); // 100 + 35 (dagger) + 40 (wand)
     });
 
     it("NPC not served when shop lacks wanted item", () => {
@@ -1163,7 +1163,7 @@ describe("game loop", () => {
       expect(state.buildings[0].storage.dagger).toBe(0);
       expect(state.buildings[1].storage.dagger).toBe(0);
       expect(state.buildings[1].npcQueue).toHaveLength(3);
-      expect(state.currency).toBe(120);
+      expect(state.currency).toBe(135);
     });
   });
 });

@@ -146,20 +146,20 @@ export const SMELT_TICKS: Record<OreType, number> = {
   copper: 4,
 };
 
-export const SMELT_ORE_COST = 2;
+export const SMELT_ORE_COST = 3;
 
 export const SELL_PRICES: Record<string, number> = {
-  dagger: 20,
-  armour: 40,
-  wand: 25,
-  magic_powder: 45,
+  dagger: 35,
+  armour: 60,
+  wand: 40,
+  magic_powder: 65,
 };
 
 export const RECIPE_BARS_COST: Record<ForgerRecipe, number> = {
-  dagger: 1,
-  armour: 2,
-  wand: 1,
-  magic_powder: 3,
+  dagger: 2,
+  armour: 3,
+  wand: 2,
+  magic_powder: 4,
 };
 
 export const RECIPE_TICKS: Record<ForgerRecipe, number> = {
