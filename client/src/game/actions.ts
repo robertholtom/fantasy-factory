@@ -7,11 +7,18 @@ import {
   GameState,
   Inventory,
   GEOLOGIST_MAX_COUNT,
-  EXPLORER_MAX_COUNT,
-} from "../../shared/types.js";
-import { getState, setState, createInitialState, setPrestige, setUpgrades, setAutomation, setMeta, saveGame } from "./state.js";
-import { createDefaultPrestige, createDefaultUpgrades, createDefaultAutomation, createDefaultMeta } from "./persistence.js";
-import { applySmartDefaults } from "./automation.js";
+  UPGRADE_COSTS,
+  MAX_UPGRADE_LEVEL,
+  BASE_LAND_COST,
+  LAND_COST_MULTIPLIER,
+  SorterFilter,
+  ITEM_CATEGORIES,
+  findPath,
+  getBeltEndpoints,
+} from "./types";
+import { getState, setState, createInitialState, setPrestige, setUpgrades, setAutomation, setMeta, saveGame } from "./state";
+import { createDefaultPrestige, createDefaultUpgrades, createDefaultAutomation, createDefaultMeta } from "./persistence";
+import { applySmartDefaults } from "./automation";
 
 function emptyInventory(): Inventory {
   return { iron_ore: 0, iron_bar: 0, dagger: 0, armour: 0, copper_ore: 0, copper_bar: 0, wand: 0, magic_powder: 0 };
@@ -59,13 +66,6 @@ export function placeBuilding(
     }
   }
 
-  if (type === "explorer") {
-    const existingExplorers = state.buildings.filter(b => b.type === "explorer").length;
-    if (existingExplorers >= EXPLORER_MAX_COUNT) {
-      return { state, error: "Only one explorer building allowed" };
-    }
-  }
-
   state.currency -= cost;
   state.buildings.push({
     id: `building-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -76,9 +76,27 @@ export function placeBuilding(
     storage: emptyInventory(),
     recipe: "dagger",
     npcQueue: [],
+    upgradeLevel: 0,
   });
 
   return { state };
+}
+
+function buildObstacleSet(state: GameState): Set<string> {
+  const obstacles = new Set<string>();
+  const posKey = (p: Position) => `${p.x},${p.y}`;
+
+  for (const b of state.buildings) {
+    obstacles.add(posKey(b.position));
+  }
+
+  for (const belt of state.belts) {
+    for (let i = 1; i < belt.path.length - 1; i++) {
+      obstacles.add(posKey(belt.path[i]));
+    }
+  }
+
+  return obstacles;
 }
 
 export function placeBelt(
@@ -86,10 +104,6 @@ export function placeBelt(
   to: Position
 ): { state: GameState; error?: string } {
   const state = getState();
-
-  if (state.currency < BELT_COST) {
-    return { state, error: "Not enough currency" };
-  }
 
   if (!inBounds(from, state) || !inBounds(to, state)) {
     return { state, error: "Out of bounds" };
@@ -99,7 +113,6 @@ export function placeBelt(
     return { state, error: "Cannot belt to same cell" };
   }
 
-  // Source must have a building
   const srcBuilding = state.buildings.some(
     (b) => b.position.x === from.x && b.position.y === from.y
   );
@@ -107,7 +120,6 @@ export function placeBelt(
     return { state, error: "Source must have a building" };
   }
 
-  // Destination must have a building
   const dstBuilding = state.buildings.some(
     (b) => b.position.x === to.x && b.position.y === to.y
   );
@@ -115,19 +127,36 @@ export function placeBelt(
     return { state, error: "Destination must have a building" };
   }
 
-  // No duplicate belts
-  const duplicate = state.belts.some(
-    (b) => b.from.x === from.x && b.from.y === from.y && b.to.x === to.x && b.to.y === to.y
-  );
+  const duplicate = state.belts.some((b) => {
+    const { from: bFrom, to: bTo } = getBeltEndpoints(b);
+    return bFrom.x === from.x && bFrom.y === from.y && bTo.x === to.x && bTo.y === to.y;
+  });
   if (duplicate) {
     return { state, error: "Belt already exists" };
   }
 
-  state.currency -= BELT_COST;
+  const obstacles = buildObstacleSet(state);
+  const path = findPath(from, to, obstacles, state.mapWidth, state.mapHeight);
+
+  if (!path) {
+    return { state, error: "No valid path" };
+  }
+
+  if (path.length < 3) {
+    return { state, error: "Belts require at least 1 space between buildings" };
+  }
+
+  const internalCells = path.length - 2;
+  const totalCost = BELT_COST * internalCells;
+
+  if (state.currency < totalCost) {
+    return { state, error: "Not enough currency" };
+  }
+
+  state.currency -= totalCost;
   state.belts.push({
     id: `belt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    from,
-    to,
+    path,
     itemsInTransit: [],
   });
 
@@ -168,15 +197,13 @@ export function demolishBuilding(
   const building = state.buildings[idx];
   const refund = Math.floor(BUILDING_COSTS[building.type] * 0.75);
 
-  // Remove belts connected to this building
   const pos = building.position;
-  state.belts = state.belts.filter(
-    (b) =>
-      !(b.from.x === pos.x && b.from.y === pos.y) &&
-      !(b.to.x === pos.x && b.to.y === pos.y)
-  );
+  state.belts = state.belts.filter((b) => {
+    const { from, to } = getBeltEndpoints(b);
+    return !(from.x === pos.x && from.y === pos.y) &&
+           !(to.x === pos.x && to.y === pos.y);
+  });
 
-  // Remove building
   state.buildings.splice(idx, 1);
   state.currency += refund;
 
@@ -198,6 +225,82 @@ export function resetGameCompletely(): GameState {
   setAutomation(createDefaultAutomation());
   saveGame();
   return newState;
+}
+
+export function upgradeBuilding(
+  buildingId: string
+): { state: GameState; error?: string } {
+  const state = getState();
+  const building = state.buildings.find((b) => b.id === buildingId);
+
+  if (!building) {
+    return { state, error: "Building not found" };
+  }
+
+  if (building.constructionProgress < 1) {
+    return { state, error: "Cannot upgrade building under construction" };
+  }
+
+  const currentLevel = building.upgradeLevel ?? 0;
+  if (currentLevel >= MAX_UPGRADE_LEVEL) {
+    return { state, error: "Building already at max level" };
+  }
+
+  const cost = UPGRADE_COSTS[currentLevel];
+  if (state.currency < cost) {
+    return { state, error: "Not enough currency" };
+  }
+
+  state.currency -= cost;
+  building.upgradeLevel = currentLevel + 1;
+
+  return { state };
+}
+
+export function purchaseLand(
+  side: "right" | "bottom"
+): { state: GameState; error?: string } {
+  const state = getState();
+  const cost = Math.floor(BASE_LAND_COST * Math.pow(LAND_COST_MULTIPLIER, state.tilesPurchased));
+
+  if (state.currency < cost) {
+    return { state, error: "Not enough currency" };
+  }
+
+  state.currency -= cost;
+  state.tilesPurchased++;
+
+  if (side === "right") {
+    state.mapWidth += 1;
+  } else {
+    state.mapHeight += 1;
+  }
+
+  return { state };
+}
+
+export function setSorterFilter(
+  buildingId: string,
+  filter: SorterFilter
+): { state: GameState; error?: string } {
+  const state = getState();
+  const building = state.buildings.find((b) => b.id === buildingId);
+
+  if (!building) {
+    return { state, error: "Building not found" };
+  }
+
+  if (building.type !== "sorter") {
+    return { state, error: "Only sorters have filters" };
+  }
+
+  if (!(filter in ITEM_CATEGORIES)) {
+    return { state, error: "Invalid filter" };
+  }
+
+  building.sorterFilter = filter;
+
+  return { state };
 }
 
 export { applySmartDefaults };

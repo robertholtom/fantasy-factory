@@ -7,16 +7,16 @@ import {
   AutomationSettings,
   OreNode,
   OreType,
-} from "../../shared/types.js";
+} from "./types";
 import {
   createNewSave,
-  saveToDisk,
-  loadFromDisk,
+  saveToLocalStorage,
+  loadFromLocalStorage,
   createDefaultMeta,
   createDefaultPrestige,
   createDefaultUpgrades,
   createDefaultAutomation,
-} from "./persistence.js";
+} from "./persistence";
 
 const MAP_WIDTH = 30;
 const MAP_HEIGHT = 20;
@@ -25,7 +25,6 @@ function generateOreNodes(): OreNode[] {
   const nodes: OreNode[] = [];
   const positions = new Set<string>();
 
-  // Place 25-35 ore nodes randomly
   const count = 25 + Math.floor(Math.random() * 11);
   while (nodes.length < count) {
     const x = Math.floor(Math.random() * MAP_WIDTH);
@@ -60,17 +59,16 @@ export function createInitialState(): GameState {
     mapWidth: MAP_WIDTH,
     mapHeight: MAP_HEIGHT,
     geologistExplorer: null,
-    explorerCharacter: null,
     kingPenaltyTicksLeft: 0,
     lastKingTick: 0,
+    tilesPurchased: 0,
   };
 }
 
-// Current active save
+// Current active save - module-level singleton
 let currentSave: GameSave | null = null;
-let currentPlayerId: string = "default";
 let ticksSinceLastSave = 0;
-const AUTO_SAVE_INTERVAL = 10; // Save every 10 ticks
+const AUTO_SAVE_INTERVAL = 10;
 
 // Legacy state for backwards compatibility
 let gameState: GameState = createInitialState();
@@ -152,8 +150,15 @@ export function getCurrentSave(): GameSave | null {
   return currentSave;
 }
 
+export function setCurrentSave(save: GameSave | null): void {
+  currentSave = save;
+  if (save) {
+    gameState = save.state;
+  }
+}
+
 export function getCurrentPlayerId(): string {
-  return currentPlayerId;
+  return currentSave?.playerId ?? "default";
 }
 
 // Create a new game for a player
@@ -168,19 +173,18 @@ export function createGame(playerId: string): { save: GameSave; error?: string }
   }
 
   currentSave = save;
-  currentPlayerId = playerId;
   gameState = save.state;
   ticksSinceLastSave = 0;
 
   // Save immediately
-  saveToDisk(save);
+  saveToLocalStorage(save);
 
   return { save };
 }
 
 // Load an existing game
 export function loadGame(playerId: string): { save: GameSave | null; error?: string; isNew?: boolean } {
-  const result = loadFromDisk(playerId);
+  const result = loadFromLocalStorage(playerId);
 
   if (result.error) {
     return { save: null, error: result.error };
@@ -193,7 +197,6 @@ export function loadGame(playerId: string): { save: GameSave | null; error?: str
   }
 
   currentSave = result.save;
-  currentPlayerId = playerId;
   gameState = result.save.state;
   ticksSinceLastSave = 0;
 
@@ -207,7 +210,7 @@ export function saveGame(): { success: boolean; error?: string } {
   }
 
   currentSave.meta.lastTickAt = Date.now();
-  const result = saveToDisk(currentSave);
+  const result = saveToLocalStorage(currentSave);
   ticksSinceLastSave = 0;
   return result;
 }
@@ -229,22 +232,3 @@ export function updateMetaStats(currencyEarned: number, itemsProduced: number): 
   currentSave.meta.totalCurrencyEarned += currencyEarned;
   currentSave.meta.totalItemsProduced += itemsProduced;
 }
-
-// Save on server shutdown
-export function saveOnShutdown(): void {
-  if (currentSave) {
-    console.log("Saving game on shutdown...");
-    saveGame();
-  }
-}
-
-// Register shutdown handlers
-process.on("SIGINT", () => {
-  saveOnShutdown();
-  process.exit(0);
-});
-
-process.on("SIGTERM", () => {
-  saveOnShutdown();
-  process.exit(0);
-});

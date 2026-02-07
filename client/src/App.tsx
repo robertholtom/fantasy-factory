@@ -1,32 +1,20 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import "./App.css";
 import {
-  GameState,
   BuildingType,
   ForgerRecipe,
-  GameMeta,
-  PrestigeData,
-  UpgradeState,
-  AutomationSettings,
-  OfflineProgress,
-} from "../../shared/types";
-import * as api from "./game/api";
+  Building,
+} from "./game/types";
+import { useGameEngine } from "./game/useGameEngine";
 import GameCanvas, { PlacementMode } from "./game/GameCanvas";
 import HUD from "./game/HUD";
 
-const PLAYER_ID = "default"; // Simple single-player for now
-
 function App() {
-  const [state, setState] = useState<GameState | null>(null);
-  const [meta, setMeta] = useState<GameMeta | null>(null);
-  const [prestige, setPrestige] = useState<PrestigeData | null>(null);
-  const [upgrades, setUpgrades] = useState<UpgradeState | null>(null);
-  const [automation, setAutomation] = useState<AutomationSettings | null>(null);
-  const [offlineProgress, setOfflineProgress] = useState<OfflineProgress | null>(null);
+  const game = useGameEngine();
   const [placementMode, setPlacementMode] = useState<PlacementMode>(null);
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const errorTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const showError = (msg: string) => {
@@ -34,53 +22,6 @@ function App() {
     if (errorTimer.current) clearTimeout(errorTimer.current);
     errorTimer.current = setTimeout(() => setError(null), 3000);
   };
-
-  // Load game on startup
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const result = await api.loadGame(PLAYER_ID);
-        if (result.save) {
-          setState(result.save.state);
-          setMeta(result.save.meta);
-          setPrestige(result.save.prestige);
-          setUpgrades(result.save.upgrades);
-          setAutomation(result.save.automation);
-          if (result.offlineProgress && result.offlineProgress.ticksSimulated > 0) {
-            setOfflineProgress(result.offlineProgress);
-          }
-        }
-        setLoaded(true);
-      } catch {
-        // Fallback to regular state polling
-        setLoaded(true);
-      }
-    };
-    load();
-  }, []);
-
-  // Poll game state after initial load
-  useEffect(() => {
-    if (!loaded) return;
-
-    const poll = async () => {
-      try {
-        const fullState = await api.getFullState();
-        setState(fullState.state);
-        setMeta(fullState.meta);
-        setPrestige(fullState.prestige);
-        setUpgrades(fullState.upgrades);
-        setAutomation(fullState.automation);
-      } catch {
-        // Fallback to basic state
-        api.getGameState().then(setState).catch(() => {});
-      }
-    };
-
-    poll();
-    const id = setInterval(poll, 500);
-    return () => clearInterval(id);
-  }, [loaded]);
 
   const handleBuy = useCallback((type: BuildingType) => {
     setPlacementMode({ kind: "building", buildingType: type });
@@ -98,32 +39,28 @@ function App() {
   }, []);
 
   const handlePlaceBuilding = useCallback(
-    async (x: number, y: number) => {
+    (x: number, y: number) => {
       if (placementMode?.kind !== "building") return;
-      const result = await api.placeBuilding(placementMode.buildingType, { x, y });
+      const result = game.placeBuilding(placementMode.buildingType, { x, y });
       if (result.error) {
         showError(result.error);
-      } else if (result.state) {
-        setState(result.state);
       }
       setPlacementMode(null);
       setGhostPos(null);
     },
-    [placementMode]
+    [placementMode, game]
   );
 
   const handlePlaceBelt = useCallback(
-    async (from: { x: number; y: number }, to: { x: number; y: number }) => {
-      const result = await api.placeBelt(from, to);
+    (from: { x: number; y: number }, to: { x: number; y: number }) => {
+      const result = game.placeBelt(from, to);
       if (result.error) {
         showError(result.error);
-      } else if (result.state) {
-        setState(result.state);
       }
       setPlacementMode(null);
       setGhostPos(null);
     },
-    []
+    [game]
   );
 
   const handleStartDemolish = useCallback(() => {
@@ -132,80 +69,102 @@ function App() {
   }, []);
 
   const handleDemolish = useCallback(
-    async (buildingId: string) => {
-      const result = await api.demolishBuilding(buildingId);
+    (buildingId: string) => {
+      const result = game.demolishBuilding(buildingId);
       if (result.error) {
         showError(result.error);
-      } else if (result.state) {
-        setState(result.state);
       }
       setPlacementMode(null);
       setGhostPos(null);
     },
-    []
+    [game]
   );
 
   const handleClickBuilding = useCallback(
-    async (buildingId: string) => {
-      if (!state) return;
-      const building = state.buildings.find((b) => b.id === buildingId);
-      if (!building || building.type !== "forger") return;
-      const recipeOrder: ForgerRecipe[] = ["dagger", "armour", "wand", "magic_powder"];
-      const idx = recipeOrder.indexOf(building.recipe);
-      const newRecipe = recipeOrder[(idx + 1) % recipeOrder.length];
-      const result = await api.setRecipe(buildingId, newRecipe);
-      if (result.error) {
-        showError(result.error);
-      } else if (result.state) {
-        setState(result.state);
+    (buildingId: string) => {
+      if (!game.state) return;
+      const building = game.state.buildings.find((b) => b.id === buildingId);
+      if (!building) return;
+
+      // If clicking the same building, cycle forger recipe
+      if (selectedBuilding?.id === buildingId && building.type === "forger") {
+        const recipeOrder: ForgerRecipe[] = ["dagger", "armour", "wand", "magic_powder"];
+        const idx = recipeOrder.indexOf(building.recipe);
+        const newRecipe = recipeOrder[(idx + 1) % recipeOrder.length];
+        const result = game.setRecipe(buildingId, newRecipe);
+        if (result.error) {
+          showError(result.error);
+        }
+      } else {
+        // Select the building
+        setSelectedBuilding(building);
       }
     },
-    [state]
+    [game, selectedBuilding]
   );
+
+  const handleUpgradeBuilding = useCallback(() => {
+    if (!selectedBuilding) return;
+    const result = game.upgradeBuilding(selectedBuilding.id);
+    if (result.error) {
+      showError(result.error);
+    } else if (result.state) {
+      // Update selected building from new state
+      const updated = result.state.buildings.find(b => b.id === selectedBuilding.id);
+      setSelectedBuilding(updated || null);
+    }
+  }, [selectedBuilding, game]);
+
+  const handleDeselectBuilding = useCallback(() => {
+    setSelectedBuilding(null);
+  }, []);
 
   const handleHover = useCallback((x: number, y: number) => {
     setGhostPos({ x, y });
   }, []);
 
-  const handleReset = useCallback(async () => {
-    const newState = await api.resetGame();
-    setState(newState);
+  const handleReset = useCallback(() => {
+    game.resetGame();
     setPlacementMode(null);
     setGhostPos(null);
-  }, []);
+  }, [game]);
 
-  const handleResetCompletely = useCallback(async () => {
-    await api.resetGameCompletely();
-    // Full reload to reset all client state
-    window.location.reload();
-  }, []);
+  const handleResetCompletely = useCallback(() => {
+    game.resetGameCompletely();
+  }, [game]);
 
   const handleCancelPlacement = useCallback(() => {
     setPlacementMode(null);
     setGhostPos(null);
   }, []);
 
-  const handleAutomationChange = useCallback(async () => {
-    // Refresh automation settings
-    const fullState = await api.getFullState();
-    setAutomation(fullState.automation);
-  }, []);
+  const handleAutomationChange = useCallback(() => {
+    game.forceUpdate();
+  }, [game]);
 
   const handleDismissOffline = useCallback(() => {
-    setOfflineProgress(null);
-  }, []);
+    game.dismissOfflineProgress();
+  }, [game]);
+
+  const handlePurchaseLand = useCallback((side: "right" | "bottom") => {
+    const result = game.purchaseLand(side);
+    if (result.error) {
+      showError(result.error);
+    }
+  }, [game]);
 
   return (
     <div className="app">
       <HUD
-        state={state}
-        meta={meta}
-        prestige={prestige}
-        upgrades={upgrades}
-        automation={automation}
-        offlineProgress={offlineProgress}
+        state={game.state}
+        meta={game.meta}
+        prestige={game.prestige}
+        upgrades={game.upgrades}
+        automation={game.automation}
+        offlineProgress={game.offlineProgress}
         placementMode={placementMode}
         error={error}
+        selectedBuilding={selectedBuilding}
         onBuy={handleBuy}
         onStartBelt={handleStartBelt}
         onStartDemolish={handleStartDemolish}
@@ -214,10 +173,14 @@ function App() {
         onCancelPlacement={handleCancelPlacement}
         onDismissOffline={handleDismissOffline}
         onAutomationChange={handleAutomationChange}
+        onUpgradeBuilding={handleUpgradeBuilding}
+        onDeselectBuilding={handleDeselectBuilding}
+        onPurchaseLand={handlePurchaseLand}
+        gameEngine={game}
       />
       <div className="canvas-container">
         <GameCanvas
-          state={state}
+          state={game.state}
           placementMode={placementMode}
           onPlaceBuilding={handlePlaceBuilding}
           onPlaceBelt={handlePlaceBelt}

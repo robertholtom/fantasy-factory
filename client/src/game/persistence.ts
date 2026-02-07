@@ -1,28 +1,21 @@
-import * as fs from "fs";
-import * as path from "path";
 import {
   GameSave,
-  GameState,
   GameMeta,
   PrestigeData,
   UpgradeState,
   AutomationSettings,
   SAVE_VERSION,
-} from "../../shared/types.js";
-import { createInitialState } from "./state.js";
+  findPath,
+  Position,
+  Belt,
+} from "./types";
+import { createInitialState } from "./state";
 
-const SAVES_DIR = path.join(process.cwd(), "saves");
+const STORAGE_KEY_PREFIX = "fantasy-factory-save-";
 
-function ensureSavesDir(): void {
-  if (!fs.existsSync(SAVES_DIR)) {
-    fs.mkdirSync(SAVES_DIR, { recursive: true });
-  }
-}
-
-function getSavePath(playerId: string): string {
-  // Sanitize playerId to prevent path traversal
+function getStorageKey(playerId: string): string {
   const sanitized = playerId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  return path.join(SAVES_DIR, `${sanitized}.json`);
+  return `${STORAGE_KEY_PREFIX}${sanitized}`;
 }
 
 export function createDefaultMeta(): GameMeta {
@@ -63,12 +56,14 @@ export function createDefaultAutomation(): AutomationSettings {
     autoPlaceBelt: false,
     autoPlaceWarehouse: false,
     autoPlaceGeologist: false,
-    autoPlaceExplorer: false,
+    autoPlaceJunction: false,
+    autoPlaceSorter: false,
     autoRecipeSwitch: false,
     useAdvancedRecipeLogic: false,
     buildCompleteChains: false,
     useROICalculations: false,
     saveForBetterOptions: false,
+    useHubRouting: false,
     priorityOreType: "balanced",
     reserveCurrency: 100,
   };
@@ -90,29 +85,27 @@ export function createNewSave(playerId: string, startingCurrencyBonus = 0): Game
   };
 }
 
-export function saveToDisk(save: GameSave): { success: boolean; error?: string } {
+export function saveToLocalStorage(save: GameSave): { success: boolean; error?: string } {
   try {
-    ensureSavesDir();
     save.savedAt = Date.now();
     save.meta.lastTickAt = Date.now();
-    const savePath = getSavePath(save.playerId);
-    fs.writeFileSync(savePath, JSON.stringify(save, null, 2), "utf-8");
+    const key = getStorageKey(save.playerId);
+    localStorage.setItem(key, JSON.stringify(save));
     return { success: true };
   } catch (err) {
     return { success: false, error: String(err) };
   }
 }
 
-export function loadFromDisk(playerId: string): { save: GameSave | null; error?: string } {
+export function loadFromLocalStorage(playerId: string): { save: GameSave | null; error?: string } {
   try {
-    ensureSavesDir();
-    const savePath = getSavePath(playerId);
+    const key = getStorageKey(playerId);
+    const data = localStorage.getItem(key);
 
-    if (!fs.existsSync(savePath)) {
+    if (!data) {
       return { save: null };
     }
 
-    const data = fs.readFileSync(savePath, "utf-8");
     const save = JSON.parse(data) as GameSave;
 
     // Version migration if needed
@@ -128,10 +121,8 @@ export function loadFromDisk(playerId: string): { save: GameSave | null; error?:
 
 export function deleteSave(playerId: string): { success: boolean; error?: string } {
   try {
-    const savePath = getSavePath(playerId);
-    if (fs.existsSync(savePath)) {
-      fs.unlinkSync(savePath);
-    }
+    const key = getStorageKey(playerId);
+    localStorage.removeItem(key);
     return { success: true };
   } catch (err) {
     return { success: false, error: String(err) };
@@ -140,29 +131,30 @@ export function deleteSave(playerId: string): { success: boolean; error?: string
 
 export function listSaves(): string[] {
   try {
-    ensureSavesDir();
-    const files = fs.readdirSync(SAVES_DIR);
-    return files
-      .filter((f) => f.endsWith(".json"))
-      .map((f) => f.replace(".json", ""));
+    const saves: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(STORAGE_KEY_PREFIX)) {
+        saves.push(key.replace(STORAGE_KEY_PREFIX, ""));
+      }
+    }
+    return saves;
   } catch {
     return [];
   }
 }
 
 export function saveExists(playerId: string): boolean {
-  const savePath = getSavePath(playerId);
-  return fs.existsSync(savePath);
+  const key = getStorageKey(playerId);
+  return localStorage.getItem(key) !== null;
 }
 
 function migrateSave(save: GameSave): void {
   if (save.version < 2) {
-    // Remove aiMode from state, migrate to automation settings
     const wasAiMode = (save.state as any).aiMode ?? false;
     delete (save.state as any).aiMode;
 
     if (wasAiMode) {
-      // Enable full automation to match prior AI Mode behavior
       save.automation = {
         ...save.automation,
         enabled: true,
@@ -181,30 +173,82 @@ function migrateSave(save: GameSave): void {
       };
     }
 
-    // Add defaults for new fields if missing
     save.automation.autoPlaceShop ??= false;
     save.automation.autoPlaceWarehouse ??= false;
     save.automation.autoPlaceGeologist ??= false;
-    save.automation.autoPlaceExplorer ??= false;
     save.automation.buildCompleteChains ??= false;
     save.automation.useAdvancedRecipeLogic ??= false;
     save.automation.useROICalculations ??= false;
     save.automation.saveForBetterOptions ??= false;
+    save.automation.autoPlaceJunction ??= false;
+    save.automation.autoPlaceSorter ??= false;
+    save.automation.useHubRouting ??= false;
+
+    delete (save.automation as any).autoPlaceExplorer;
   }
 
   if (save.version < 3) {
-    // Add King NPC fields
     save.state.kingPenaltyTicksLeft ??= 0;
     save.state.lastKingTick ??= 0;
   }
 
-  // Add explorer character field for existing saves
-  save.state.explorerCharacter ??= null;
+  // Migrate belts from {from, to} to {path} format
+  const hasOldStyleBelts = save.state.belts.some((b: any) => b.from && !b.path);
+  if (hasOldStyleBelts) {
+    const posKey = (p: Position) => `${p.x},${p.y}`;
+    const obstacles = new Set<string>();
+
+    for (const b of save.state.buildings) {
+      obstacles.add(posKey(b.position));
+    }
+
+    const migratedBelts: Belt[] = [];
+    for (const oldBelt of save.state.belts as any[]) {
+      if (oldBelt.path) {
+        migratedBelts.push(oldBelt as Belt);
+        continue;
+      }
+
+      const from: Position = oldBelt.from;
+      const to: Position = oldBelt.to;
+
+      const path = findPath(from, to, obstacles, save.state.mapWidth, save.state.mapHeight);
+
+      if (path) {
+        for (let i = 1; i < path.length - 1; i++) {
+          obstacles.add(posKey(path[i]));
+        }
+
+        const internalCells = Math.max(1, path.length - 2);
+        const itemsInTransit = (oldBelt.itemsInTransit || []).map((item: any) => ({
+          itemType: item.itemType,
+          cellIndex: Math.floor((item.progress ?? 0) * internalCells),
+        }));
+
+        migratedBelts.push({
+          id: oldBelt.id,
+          path,
+          itemsInTransit,
+        });
+      } else {
+        console.warn(`Migration: Dropping belt ${oldBelt.id} - no valid path from (${from.x},${from.y}) to (${to.x},${to.y})`);
+      }
+    }
+    save.state.belts = migratedBelts;
+  }
+
+  delete (save.state as any).explorerCharacter;
+  save.state.tilesPurchased ??= 0;
+
+  save.state.buildings = save.state.buildings.filter((b: any) => b.type !== "explorer");
+
+  for (const building of save.state.buildings) {
+    building.upgradeLevel ??= 0;
+  }
 
   save.version = SAVE_VERSION;
 }
 
-// Calculate time since last save for offline progress
 export function getOfflineSeconds(save: GameSave): number {
   const now = Date.now();
   const lastTick = save.meta.lastTickAt || save.savedAt;

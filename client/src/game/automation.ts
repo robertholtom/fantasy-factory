@@ -18,18 +18,19 @@ import {
   RECIPE_BARS_COST,
   RECIPE_TICKS,
   WHOLESALE_MULTIPLIER,
-} from "../../shared/types.js";
-import { getAutomation, setAutomation, getUpgrades, getState } from "./state.js";
-import { isAutomationUnlocked } from "./modifiers.js";
+  SorterFilter,
+  findPath,
+  getBeltEndpoints,
+  UpgradeState,
+} from "./types";
+import { isAutomationUnlocked } from "./modifiers";
 
 function emptyInventory(): Inventory {
   return { iron_ore: 0, iron_bar: 0, dagger: 0, armour: 0, copper_ore: 0, copper_bar: 0, wand: 0, magic_powder: 0 };
 }
 
-// === ROI CALCULATION FUNCTIONS (from AI mode) ===
-
 interface BuildAction {
-  type: "miner" | "smelter" | "forger" | "shop" | "warehouse" | "geologist" | "explorer" | "chain" | "belt";
+  type: "miner" | "smelter" | "forger" | "shop" | "warehouse" | "geologist" | "chain" | "belt" | "junction" | "sorter";
   cost: number;
   profitPerTick: number;
   roi: number;
@@ -37,7 +38,6 @@ interface BuildAction {
   description: string;
 }
 
-// Calculate expected profit per tick from a production chain
 function calculateChainProfitPerTick(oreType: "iron" | "copper"): number {
   const minerTicks = MINER_TICKS[oreType];
   const smeltTicks = SMELT_TICKS[oreType];
@@ -60,7 +60,6 @@ function calculateChainProfitPerTick(oreType: "iron" | "copper"): number {
   return bestProfitPerTick;
 }
 
-// Calculate profit from adding a miner to an existing smelter
 function calculateMinerAdditionProfit(oreType: "iron" | "copper", currentMinerCount: number): number {
   const minerTicks = MINER_TICKS[oreType];
   const smeltTicks = SMELT_TICKS[oreType];
@@ -81,7 +80,6 @@ function calculateMinerAdditionProfit(oreType: "iron" | "copper", currentMinerCo
   return marginalItemsPerTick * SELL_PRICES[recipe];
 }
 
-// Calculate warehouse profit boost
 function calculateWarehouseProfit(forgerCount: number): number {
   const productionPerTick = forgerCount * 0.15;
   const shopSalesPerTick = Math.min(productionPerTick, 0.16);
@@ -90,17 +88,12 @@ function calculateWarehouseProfit(forgerCount: number): number {
   return excessProduction * avgPrice * WHOLESALE_MULTIPLIER;
 }
 
-// === DEMAND ANALYSIS ===
-
-// Pick best recipe for ore type based on NPC demand
 function pickRecipeForOreType(state: GameState, oreType: "iron" | "copper"): ForgerRecipe {
   const demand = analyzeDemand(state);
 
   if (oreType === "iron") {
-    // Pick armour if demand is higher, otherwise dagger
     return demand.armour > demand.dagger ? "armour" : "dagger";
   } else {
-    // Pick magic_powder if demand is higher, otherwise wand
     return demand.magic_powder > demand.wand ? "magic_powder" : "wand";
   }
 }
@@ -113,20 +106,17 @@ function analyzeDemand(state: GameState): Record<FinishedGood, number> {
       for (const npc of building.npcQueue) {
         const urgencyWeight = 1 + (1 - npc.patienceLeft / npc.maxPatience) * 2;
 
-        // Handle multi-item NPCs (Noble/Adventurer)
         if (npc.multiItemDemand) {
           for (const { item, quantity } of npc.multiItemDemand.items) {
             const value = SELL_PRICES[item] * npc.multiItemDemand.bonusMultiplier * quantity * urgencyWeight;
             demand[item] += value;
           }
         } else if (npc.kingDemand) {
-          // Handle King demand
           for (const { item, quantity } of npc.kingDemand.items) {
-            const value = SELL_PRICES[item] * 4.0 * quantity * urgencyWeight;  // King pays 4x
+            const value = SELL_PRICES[item] * 4.0 * quantity * urgencyWeight;
             demand[item] += value;
           }
         } else {
-          // Normal single-item NPC
           const basePrice = SELL_PRICES[npc.wantedItem];
           const isIron = RECIPE_BAR_TYPE[npc.wantedItem] === "iron_bar";
           const mult = isIron
@@ -142,7 +132,6 @@ function analyzeDemand(state: GameState): Record<FinishedGood, number> {
   return demand;
 }
 
-// Find bottlenecks in production
 function analyzeBottlenecks(state: GameState): {
   needMoreMiners: boolean;
   needMoreSmelters: boolean;
@@ -183,10 +172,7 @@ function analyzeBottlenecks(state: GameState): {
   };
 }
 
-// === RECIPE OPTIMIZATION ===
-
-// Advanced recipe optimization using urgency+profit calculation (from AI mode)
-function advancedOptimizeRecipes(state: GameState): void {
+function advancedOptimizeRecipes(state: GameState, upgrades: UpgradeState): void {
   const shops = state.buildings.filter(b => b.type === "shop");
   const forgers = state.buildings.filter(b => b.type === "forger");
 
@@ -238,23 +224,27 @@ function advancedOptimizeRecipes(state: GameState): void {
   if (unservedNpcs.length === 0) return;
 
   function getForgerBarType(forger: typeof forgers[0]): "iron_bar" | "copper_bar" | null {
-    const feedBelt = state.belts.find(b =>
-      b.to.x === forger.position.x && b.to.y === forger.position.y
-    );
+    const feedBelt = state.belts.find(b => {
+      const { to } = getBeltEndpoints(b);
+      return to.x === forger.position.x && to.y === forger.position.y;
+    });
     if (!feedBelt) return null;
 
+    const { from: feedFrom } = getBeltEndpoints(feedBelt);
     const smelter = state.buildings.find(b =>
-      b.type === "smelter" && b.position.x === feedBelt.from.x && b.position.y === feedBelt.from.y
+      b.type === "smelter" && b.position.x === feedFrom.x && b.position.y === feedFrom.y
     );
     if (!smelter) return null;
 
-    const minerBelt = state.belts.find(b =>
-      b.to.x === smelter.position.x && b.to.y === smelter.position.y
-    );
+    const minerBelt = state.belts.find(b => {
+      const { to } = getBeltEndpoints(b);
+      return to.x === smelter.position.x && to.y === smelter.position.y;
+    });
     if (!minerBelt) return null;
 
+    const { from: minerBeltFrom } = getBeltEndpoints(minerBelt);
     const miner = state.buildings.find(b =>
-      b.type === "miner" && b.position.x === minerBelt.from.x && b.position.y === minerBelt.from.y
+      b.type === "miner" && b.position.x === minerBeltFrom.x && b.position.y === minerBeltFrom.y
     );
     if (!miner) return null;
 
@@ -288,11 +278,7 @@ function advancedOptimizeRecipes(state: GameState): void {
   }
 }
 
-// Basic recipe optimization based on demand
-function basicOptimizeRecipes(state: GameState): void {
-  const settings = getAutomation();
-  const upgrades = getUpgrades();
-
+function basicOptimizeRecipes(state: GameState, settings: AutomationSettings, upgrades: UpgradeState): void {
   if (!settings.autoRecipeSwitch || !isAutomationUnlocked(upgrades, "autoRecipe")) {
     return;
   }
@@ -308,13 +294,15 @@ function basicOptimizeRecipes(state: GameState): void {
   for (const forger of forgers) {
     if (forger.progress > 0.3) continue;
 
-    const feedBelt = state.belts.find(b =>
-      b.to.x === forger.position.x && b.to.y === forger.position.y
-    );
+    const feedBelt = state.belts.find(b => {
+      const { to } = getBeltEndpoints(b);
+      return to.x === forger.position.x && to.y === forger.position.y;
+    });
     if (!feedBelt) continue;
 
+    const { from: feedFrom } = getBeltEndpoints(feedBelt);
     const smelter = state.buildings.find(b =>
-      b.type === "smelter" && b.position.x === feedBelt.from.x && b.position.y === feedBelt.from.y
+      b.type === "smelter" && b.position.x === feedFrom.x && b.position.y === feedFrom.y
     );
     if (!smelter) continue;
 
@@ -341,31 +329,21 @@ function basicOptimizeRecipes(state: GameState): void {
   }
 }
 
-// Smart recipe optimization - uses advanced or basic based on settings
-export function optimizeRecipes(state: GameState): void {
-  const settings = getAutomation();
-  const upgrades = getUpgrades();
-
+export function optimizeRecipes(state: GameState, settings: AutomationSettings, upgrades: UpgradeState): void {
   if (!settings.autoRecipeSwitch || !isAutomationUnlocked(upgrades, "autoRecipe")) {
     return;
   }
 
   if (settings.useAdvancedRecipeLogic) {
-    advancedOptimizeRecipes(state);
+    advancedOptimizeRecipes(state, upgrades);
   } else {
-    basicOptimizeRecipes(state);
+    basicOptimizeRecipes(state, settings, upgrades);
   }
 }
 
-// === MAIN AUTOMATION FUNCTION ===
-
-export function runAutomation(state: GameState): void {
-  const settings = getAutomation();
-  const upgrades = getUpgrades();
-
+export function runAutomation(state: GameState, upgrades: UpgradeState, settings: AutomationSettings): void {
   if (!settings.enabled) return;
 
-  // Reserve currency check
   if (state.currency <= settings.reserveCurrency) return;
 
   const availableCurrency = state.currency - settings.reserveCurrency;
@@ -380,25 +358,42 @@ export function runAutomation(state: GameState): void {
     return pos.x >= 0 && pos.x < state.mapWidth && pos.y >= 0 && pos.y < state.mapHeight;
   }
 
-  function findEmptyNear(target: Position, reserved: Set<string>): Position | null {
+  function findEmptyNear(target: Position, reserved: Set<string>, requireBeltPath = true): Position | null {
     const directions = [
       { dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
       { dx: 1, dy: 1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
     ];
-    for (let radius = 1; radius <= 10; radius++) {
+    const obstacles = buildObstacleSet();
+    const candidates: { pos: Position; dist: number }[] = [];
+
+    for (let radius = 2; radius <= 15; radius++) {
       for (const dir of directions) {
         const pos = { x: target.x + dir.dx * radius, y: target.y + dir.dy * radius };
         if (!inBounds(pos)) continue;
         if (reserved.has(posKey(pos))) continue;
         if (isOccupied(pos)) continue;
         const onOre = state.oreNodes.some(n => n.position.x === pos.x && n.position.y === pos.y);
-        if (!onOre) return pos;
+        if (onOre) continue;
+
+        if (requireBeltPath) {
+          const tempObstacles = new Set(obstacles);
+          tempObstacles.delete(posKey(target));
+          tempObstacles.delete(posKey(pos));
+          const check = canPlaceBelt(target, pos, tempObstacles);
+          if (!check.valid) continue;
+        }
+
+        candidates.push({ pos, dist: Math.abs(pos.x - target.x) + Math.abs(pos.y - target.y) });
       }
+      if (candidates.length > 0) break;
     }
-    return null;
+
+    if (candidates.length === 0) return null;
+    candidates.sort((a, b) => a.dist - b.dist);
+    return candidates[0].pos;
   }
 
-  function placeBuilding(type: BuildingType, pos: Position, recipe?: ForgerRecipe): boolean {
+  function placeBuilding(type: BuildingType, pos: Position, recipe?: ForgerRecipe, sorterFilter?: SorterFilter): boolean {
     if (availableCurrency < BUILDING_COSTS[type]) return false;
     if (isOccupied(pos)) return false;
 
@@ -412,25 +407,75 @@ export function runAutomation(state: GameState): void {
       storage: emptyInventory(),
       recipe: recipe || "dagger",
       npcQueue: [],
+      upgradeLevel: 0,
+      sorterFilter: type === "sorter" ? (sorterFilter || "all") : undefined,
     });
     return true;
   }
 
-  function placeBelt(from: Position, to: Position): boolean {
-    if (availableCurrency < BELT_COST) return false;
-    const exists = state.belts.some(
-      b => b.from.x === from.x && b.from.y === from.y && b.to.x === to.x && b.to.y === to.y
-    );
-    if (exists) return false;
+  function findOutputHub(): Position | null {
+    if (!settings.useHubRouting) return null;
+    for (const junction of junctions) {
+      const hasOutputBelt = state.belts.some(b => {
+        const { from, to } = getBeltEndpoints(b);
+        return from.x === junction.position.x && from.y === junction.position.y &&
+          [...shops, ...warehouses].some(s => s.position.x === to.x && s.position.y === to.y);
+      });
+      if (hasOutputBelt) return junction.position;
+    }
+    return null;
+  }
 
-    state.currency -= BELT_COST;
+  function buildObstacleSet(): Set<string> {
+    const obstacles = new Set<string>();
+    for (const b of state.buildings) {
+      obstacles.add(posKey(b.position));
+    }
+    for (const belt of state.belts) {
+      if (belt.path) {
+        for (let i = 1; i < belt.path.length - 1; i++) {
+          obstacles.add(posKey(belt.path[i]));
+        }
+      }
+    }
+    return obstacles;
+  }
+
+  function canPlaceBelt(from: Position, to: Position, obstacles?: Set<string>): { valid: boolean; path?: Position[]; cost?: number } {
+    const exists = state.belts.some((b) => {
+      const { from: bFrom, to: bTo } = getBeltEndpoints(b);
+      return bFrom.x === from.x && bFrom.y === from.y && bTo.x === to.x && bTo.y === to.y;
+    });
+    if (exists) return { valid: false };
+
+    const obs = obstacles || buildObstacleSet();
+    const path = findPath(from, to, obs, state.mapWidth, state.mapHeight);
+    if (!path || path.length < 3) return { valid: false };
+
+    const internalCells = path.length - 2;
+    const totalCost = BELT_COST * internalCells;
+    return { valid: true, path, cost: totalCost };
+  }
+
+  function placeBelt(from: Position, to: Position): boolean {
+    const result = canPlaceBelt(from, to);
+    if (!result.valid || !result.path || !result.cost) return false;
+    if (availableCurrency < result.cost) return false;
+
+    state.currency -= result.cost;
     state.belts.push({
       id: `belt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      from,
-      to,
+      path: result.path,
       itemsInTransit: [],
     });
     return true;
+  }
+
+  function placeBeltWithFallback(from: Position, targets: Position[]): boolean {
+    for (const to of targets) {
+      if (placeBelt(from, to)) return true;
+    }
+    return false;
   }
 
   const miners = state.buildings.filter(b => b.type === "miner");
@@ -439,7 +484,8 @@ export function runAutomation(state: GameState): void {
   const shops = state.buildings.filter(b => b.type === "shop");
   const warehouses = state.buildings.filter(b => b.type === "warehouse");
   const geologists = state.buildings.filter(b => b.type === "geologist");
-  const explorers = state.buildings.filter(b => b.type === "explorer");
+  const junctions = state.buildings.filter(b => b.type === "junction");
+  const sorters = state.buildings.filter(b => b.type === "sorter");
 
   const minedPositions = new Set(miners.map(m => posKey(m.position)));
   let unmined = state.oreNodes.filter(n => !minedPositions.has(posKey(n.position)));
@@ -456,12 +502,10 @@ export function runAutomation(state: GameState): void {
 
   const canAutoBelt = settings.autoPlaceBelt;
 
-  // === ROI-BASED DECISION MAKING ===
   if (settings.useROICalculations) {
     const actions: BuildAction[] = [];
     const salesBuildings = [...shops, ...warehouses];
 
-    // Action: Build first miner
     if (settings.autoPlaceMiner && miners.length === 0 && unmined.length > 0) {
       actions.push({
         type: "miner",
@@ -473,7 +517,6 @@ export function runAutomation(state: GameState): void {
       });
     }
 
-    // Action: Build smelter for existing miners
     if (settings.autoPlaceSmelter && miners.length > 0 && smelters.length === 0) {
       const cost = BUILDING_COSTS.smelter + (canAutoBelt ? BELT_COST : 0);
       const miner = miners[0];
@@ -496,16 +539,19 @@ export function runAutomation(state: GameState): void {
       }
     }
 
-    // Action: Build forger for existing smelter
     if (settings.autoPlaceForger && smelters.length > 0 && forgers.length === 0) {
       const cost = BUILDING_COSTS.forger + (canAutoBelt ? BELT_COST : 0);
       const smelter = smelters[0];
       const forgerPos = findEmptyNear(smelter.position, reserved);
       if (forgerPos) {
-        const minerBelt = state.belts.find(b => b.to.x === smelter.position.x && b.to.y === smelter.position.y);
+        const minerBelt = state.belts.find(b => {
+          const { to } = getBeltEndpoints(b);
+          return to.x === smelter.position.x && to.y === smelter.position.y;
+        });
         let oreType: "iron" | "copper" = "iron";
         if (minerBelt) {
-          const miner = state.buildings.find(b => b.position.x === minerBelt.from.x && b.position.y === minerBelt.from.y);
+          const { from: minerBeltFrom } = getBeltEndpoints(minerBelt);
+          const miner = state.buildings.find(b => b.position.x === minerBeltFrom.x && b.position.y === minerBeltFrom.y);
           if (miner) {
             const oreNode = state.oreNodes.find(n => n.position.x === miner.position.x && n.position.y === miner.position.y);
             if (oreNode?.type === "copper") oreType = "copper";
@@ -529,7 +575,6 @@ export function runAutomation(state: GameState): void {
       }
     }
 
-    // Action: Build shop for existing forger
     if (settings.autoPlaceShop && forgers.length > 0 && shops.length === 0) {
       const cost = BUILDING_COSTS.shop + (canAutoBelt ? BELT_COST : 0);
       const forger = forgers[0];
@@ -558,17 +603,18 @@ export function runAutomation(state: GameState): void {
       }
     }
 
-    // Action: Add miner to existing smelter
     if (settings.autoPlaceMiner && salesBuildings.length > 0 && unmined.length > 0) {
       for (const smelter of smelters) {
-        const feedingBelts = state.belts.filter(b =>
-          b.to.x === smelter.position.x && b.to.y === smelter.position.y
-        );
+        const feedingBelts = state.belts.filter(b => {
+          const { to } = getBeltEndpoints(b);
+          return to.x === smelter.position.x && to.y === smelter.position.y;
+        });
 
         let smelterOreType: "iron" | "copper" | null = null;
         for (const belt of feedingBelts) {
+          const { from: beltFrom } = getBeltEndpoints(belt);
           const srcMiner = state.buildings.find(b =>
-            b.position.x === belt.from.x && b.position.y === belt.from.y && b.type === "miner"
+            b.position.x === beltFrom.x && b.position.y === beltFrom.y && b.type === "miner"
           );
           if (srcMiner) {
             const oreNode = state.oreNodes.find(n =>
@@ -613,7 +659,6 @@ export function runAutomation(state: GameState): void {
       }
     }
 
-    // Action: Build warehouse
     if (settings.autoPlaceWarehouse && shops.length > 0 && warehouses.length === 0 && forgers.length >= 2) {
       const shop = shops[0];
       const warehousePos = findEmptyNear(shop.position, reserved);
@@ -652,9 +697,9 @@ export function runAutomation(state: GameState): void {
       }
     }
 
-    // Action: Build complete new chain
     if (settings.buildCompleteChains && salesBuildings.length > 0 && unmined.length > 0) {
       const salesBuilding = salesBuildings[0];
+      const outputHub = findOutputHub();
       const closest = unmined
         .map(n => ({
           node: n,
@@ -676,6 +721,7 @@ export function runAutomation(state: GameState): void {
             const cost = BUILDING_COSTS.miner + BUILDING_COSTS.smelter + BUILDING_COSTS.forger + (canAutoBelt ? BELT_COST * 3 : 0);
             const profit = calculateChainProfitPerTick(closest.node.type);
             const recipe = pickRecipeForOreType(state, closest.node.type);
+            const outputTarget = outputHub || salesBuilding.position;
 
             actions.push({
               type: "chain",
@@ -690,7 +736,7 @@ export function runAutomation(state: GameState): void {
                 if (canAutoBelt) {
                   placeBelt(minerPos, smelterPos);
                   placeBelt(smelterPos, forgerPos);
-                  placeBelt(forgerPos, salesBuilding.position);
+                  placeBelt(forgerPos, outputTarget);
                 }
                 return true;
               },
@@ -700,28 +746,68 @@ export function runAutomation(state: GameState): void {
       }
     }
 
-    // Action: Connect unconnected forgers
-    if (canAutoBelt && salesBuildings.length > 0) {
+    if (settings.autoPlaceJunction && settings.useHubRouting && forgers.length >= 2 && salesBuildings.length > 0 && junctions.length === 0) {
       const salesBuilding = salesBuildings[0];
+      const hubPos = findEmptyNear(salesBuilding.position, reserved);
+      if (hubPos) {
+        const cost = BUILDING_COSTS.junction + BELT_COST * (forgers.length + 1);
+        const profit = forgers.length * 2;
+
+        actions.push({
+          type: "junction",
+          cost,
+          profitPerTick: profit,
+          roi: cost / profit,
+          description: "Create output hub",
+          execute: () => {
+            if (placeBuilding("junction", hubPos)) {
+              placeBelt(hubPos, salesBuilding.position);
+              for (const forger of forgers) {
+                const existingBelt = state.belts.find(b => {
+                  const { from } = getBeltEndpoints(b);
+                  return from.x === forger.position.x && from.y === forger.position.y;
+                });
+                if (!existingBelt) {
+                  placeBelt(forger.position, hubPos);
+                }
+              }
+              return true;
+            }
+            return false;
+          },
+        });
+      }
+    }
+
+    if (canAutoBelt && salesBuildings.length > 0) {
+      const outputHub = findOutputHub();
+
       for (const forger of forgers) {
-        const hasBeltToSales = state.belts.some(
-          b => b.from.x === forger.position.x && b.from.y === forger.position.y &&
-               salesBuildings.some(s => b.to.x === s.position.x && b.to.y === s.position.y)
-        );
-        if (!hasBeltToSales) {
+        const hasBeltOut = state.belts.some(b => {
+          const { from } = getBeltEndpoints(b);
+          return from.x === forger.position.x && from.y === forger.position.y;
+        });
+        if (!hasBeltOut) {
+          const targets: Position[] = [];
+          if (outputHub) targets.push(outputHub);
+          const sortedSales = salesBuildings
+            .map(s => ({ pos: s.position, d: Math.abs(s.position.x - forger.position.x) + Math.abs(s.position.y - forger.position.y) }))
+            .sort((a, b) => a.d - b.d)
+            .map(s => s.pos);
+          targets.push(...sortedSales);
+
           actions.push({
             type: "belt",
             cost: BELT_COST,
             profitPerTick: 5,
             roi: BELT_COST / 5,
-            description: "Connect forger to shop",
-            execute: () => placeBelt(forger.position, salesBuilding.position),
+            description: outputHub ? "Connect forger to hub" : "Connect forger to shop",
+            execute: () => placeBeltWithFallback(forger.position, targets),
           });
         }
       }
     }
 
-    // Action: Build geologist
     if (settings.autoPlaceGeologist && geologists.length === 0 && shops.length > 0 && forgers.length >= 2) {
       const shop = shops[0];
       const geoPos = findEmptyNear(shop.position, reserved);
@@ -741,33 +827,8 @@ export function runAutomation(state: GameState): void {
       }
     }
 
-    // Action: Build explorer (when map is getting cramped)
-    if (settings.autoPlaceExplorer && explorers.length === 0 && shops.length > 0 && forgers.length >= 3) {
-      const shop = shops[0];
-      const explorerPos = findEmptyNear(shop.position, reserved);
-
-      // Build explorer when map is filling up (many buildings relative to map size)
-      const mapArea = state.mapWidth * state.mapHeight;
-      const buildingDensity = state.buildings.length / mapArea;
-
-      if (explorerPos && (buildingDensity > 0.05 || state.currency >= 800)) {
-        const cost = BUILDING_COSTS.explorer;
-        const estimatedProfit = 150 / 35; // Value from map expansion
-
-        actions.push({
-          type: "explorer",
-          cost,
-          profitPerTick: estimatedProfit,
-          roi: cost / estimatedProfit,
-          description: "Build explorer",
-          execute: () => placeBuilding("explorer", explorerPos),
-        });
-      }
-    }
-
-    // === DECISION: Pick best action ===
     if (actions.length === 0) {
-      if (settings.autoRecipeSwitch) optimizeRecipes(state);
+      if (settings.autoRecipeSwitch) optimizeRecipes(state, settings, upgrades);
       return;
     }
 
@@ -779,30 +840,27 @@ export function runAutomation(state: GameState): void {
       .filter(a => a.roi < Infinity && a.roi > 0)
       .sort((a, b) => a.roi - b.roi);
 
-    // Priority 1: Complete foundation chain first
     if (foundationActions.length > 0) {
       const action = foundationActions[0];
       if (state.currency >= action.cost + settings.reserveCurrency) {
         action.execute();
-        if (settings.autoRecipeSwitch) optimizeRecipes(state);
+        if (settings.autoRecipeSwitch) optimizeRecipes(state, settings, upgrades);
         return;
       }
       if (state.currency >= action.cost * 0.5 + settings.reserveCurrency) {
-        if (settings.autoRecipeSwitch) optimizeRecipes(state);
+        if (settings.autoRecipeSwitch) optimizeRecipes(state, settings, upgrades);
         return;
       }
     }
 
-    // Priority 2: Execute best ROI action
     if (profitableActions.length === 0) {
-      if (settings.autoRecipeSwitch) optimizeRecipes(state);
+      if (settings.autoRecipeSwitch) optimizeRecipes(state, settings, upgrades);
       return;
     }
 
     const bestAction = profitableActions[0];
     const canAffordBest = state.currency >= bestAction.cost + settings.reserveCurrency;
 
-    // Save for better options if enabled
     if (settings.saveForBetterOptions) {
       const worthSavingFor = profitableActions.find(a =>
         a.cost > state.currency - settings.reserveCurrency &&
@@ -811,7 +869,7 @@ export function runAutomation(state: GameState): void {
       );
 
       if (worthSavingFor && !canAffordBest) {
-        if (settings.autoRecipeSwitch) optimizeRecipes(state);
+        if (settings.autoRecipeSwitch) optimizeRecipes(state, settings, upgrades);
         return;
       }
 
@@ -820,7 +878,7 @@ export function runAutomation(state: GameState): void {
         const savingBenefit = (bestAction.roi - worthSavingFor.roi);
 
         if (ticksToSave < 50 && savingBenefit > 20) {
-          if (settings.autoRecipeSwitch) optimizeRecipes(state);
+          if (settings.autoRecipeSwitch) optimizeRecipes(state, settings, upgrades);
           return;
         }
       }
@@ -830,13 +888,11 @@ export function runAutomation(state: GameState): void {
       bestAction.execute();
     }
 
-    if (settings.autoRecipeSwitch) optimizeRecipes(state);
+    if (settings.autoRecipeSwitch) optimizeRecipes(state, settings, upgrades);
     return;
   }
 
-  // === BOTTLENECK-BASED DECISION MAKING (non-ROI fallback) ===
-
-  // Step 1: Need at least one miner
+  // Bottleneck-based fallback
   if (settings.autoPlaceMiner && miners.length === 0 && unmined.length > 0) {
     const cost = BUILDING_COSTS.miner;
     if (availableCurrency >= cost) {
@@ -847,7 +903,6 @@ export function runAutomation(state: GameState): void {
     }
   }
 
-  // Step 2: Need at least one smelter connected to miner
   if (settings.autoPlaceSmelter && miners.length > 0 && smelters.length === 0) {
     const cost = BUILDING_COSTS.smelter + (canAutoBelt ? BELT_COST : 0);
     if (availableCurrency >= cost) {
@@ -862,7 +917,6 @@ export function runAutomation(state: GameState): void {
     }
   }
 
-  // Step 3: Need at least one forger connected to smelter
   if (settings.autoPlaceForger && smelters.length > 0 && forgers.length === 0) {
     const cost = BUILDING_COSTS.forger + (canAutoBelt ? BELT_COST : 0);
     if (availableCurrency >= cost) {
@@ -870,12 +924,14 @@ export function runAutomation(state: GameState): void {
       const forgerPos = findEmptyNear(smelter.position, reserved);
       if (forgerPos) {
         let oreType: "iron" | "copper" = "iron";
-        const minerBelt = state.belts.find(b =>
-          b.to.x === smelter.position.x && b.to.y === smelter.position.y
-        );
+        const minerBelt = state.belts.find(b => {
+          const { to } = getBeltEndpoints(b);
+          return to.x === smelter.position.x && to.y === smelter.position.y;
+        });
         if (minerBelt) {
+          const { from: minerBeltFrom } = getBeltEndpoints(minerBelt);
           const miner = miners.find(m =>
-            m.position.x === minerBelt.from.x && m.position.y === minerBelt.from.y
+            m.position.x === minerBeltFrom.x && m.position.y === minerBeltFrom.y
           );
           if (miner) {
             const ore = state.oreNodes.find(n =>
@@ -896,7 +952,6 @@ export function runAutomation(state: GameState): void {
     }
   }
 
-  // Step 4: Need a shop to sell goods
   if (settings.autoPlaceShop && forgers.length > 0 && shops.length === 0) {
     const cost = BUILDING_COSTS.shop + (canAutoBelt ? BELT_COST : 0);
     if (availableCurrency >= cost) {
@@ -911,51 +966,117 @@ export function runAutomation(state: GameState): void {
     }
   }
 
-  // === EXPANSION: Improve existing production chain ===
-
   const bottlenecks = analyzeBottlenecks(state);
 
-  // Connect unconnected buildings first
-  if (canAutoBelt && shops.length > 0) {
-    for (const miner of miners) {
-      const hasBeltOut = state.belts.some(b =>
-        b.from.x === miner.position.x && b.from.y === miner.position.y
-      );
-      if (!hasBeltOut && smelters.length > 0) {
-        const nearest = smelters
-          .map(s => ({ s, d: Math.abs(s.position.x - miner.position.x) + Math.abs(s.position.y - miner.position.y) }))
-          .sort((a, b) => a.d - b.d)[0];
-        if (placeBelt(miner.position, nearest.s.position)) return;
-      }
-    }
-
+  // Repair orphaned buildings - prioritize fixing broken chains
+  if (canAutoBelt) {
+    // Find smelters without input belts
     for (const smelter of smelters) {
-      const hasBeltOut = state.belts.some(b =>
-        b.from.x === smelter.position.x && b.from.y === smelter.position.y
-      );
-      if (!hasBeltOut && forgers.length > 0) {
-        const nearest = forgers
-          .map(f => ({ f, d: Math.abs(f.position.x - smelter.position.x) + Math.abs(f.position.y - smelter.position.y) }))
-          .sort((a, b) => a.d - b.d)[0];
-        if (placeBelt(smelter.position, nearest.f.position)) return;
+      const hasInput = state.belts.some(b => {
+        const { to } = getBeltEndpoints(b);
+        return to.x === smelter.position.x && to.y === smelter.position.y;
+      });
+      if (!hasInput) {
+        const nearbyMiners = miners
+          .filter(m => !state.belts.some(b => {
+            const { from } = getBeltEndpoints(b);
+            return from.x === m.position.x && from.y === m.position.y;
+          }))
+          .map(m => ({ pos: m.position, d: Math.abs(m.position.x - smelter.position.x) + Math.abs(m.position.y - smelter.position.y) }))
+          .sort((a, b) => a.d - b.d)
+          .map(m => m.pos);
+        if (nearbyMiners.length > 0) {
+          for (const minerPos of nearbyMiners) {
+            if (placeBelt(minerPos, smelter.position)) return;
+          }
+        }
       }
     }
 
+    // Find forgers without input belts
     for (const forger of forgers) {
-      const hasBeltToShop = state.belts.some(b =>
-        b.from.x === forger.position.x && b.from.y === forger.position.y &&
-        shops.some(s => s.position.x === b.to.x && s.position.y === b.to.y)
-      );
-      if (!hasBeltToShop) {
-        const nearest = shops
-          .map(s => ({ s, d: Math.abs(s.position.x - forger.position.x) + Math.abs(s.position.y - forger.position.y) }))
-          .sort((a, b) => a.d - b.d)[0];
-        if (placeBelt(forger.position, nearest.s.position)) return;
+      const hasInput = state.belts.some(b => {
+        const { to } = getBeltEndpoints(b);
+        return to.x === forger.position.x && to.y === forger.position.y;
+      });
+      if (!hasInput) {
+        const nearbySmelters = smelters
+          .filter(s => !state.belts.some(b => {
+            const { from } = getBeltEndpoints(b);
+            return from.x === s.position.x && from.y === s.position.y;
+          }))
+          .map(s => ({ pos: s.position, d: Math.abs(s.position.x - forger.position.x) + Math.abs(s.position.y - forger.position.y) }))
+          .sort((a, b) => a.d - b.d)
+          .map(s => s.pos);
+        if (nearbySmelters.length > 0) {
+          for (const smelterPos of nearbySmelters) {
+            if (placeBelt(smelterPos, forger.position)) return;
+          }
+        }
       }
     }
   }
 
-  // Add more miners when production is bottlenecked
+  if (canAutoBelt && shops.length > 0) {
+    for (const miner of miners) {
+      const hasBeltOut = state.belts.some(b => {
+        const { from } = getBeltEndpoints(b);
+        return from.x === miner.position.x && from.y === miner.position.y;
+      });
+      if (!hasBeltOut && smelters.length > 0) {
+        const sortedSmelters = smelters
+          .map(s => ({ pos: s.position, d: Math.abs(s.position.x - miner.position.x) + Math.abs(s.position.y - miner.position.y) }))
+          .sort((a, b) => a.d - b.d)
+          .map(s => s.pos);
+        if (placeBeltWithFallback(miner.position, sortedSmelters)) return;
+      }
+    }
+
+    for (const smelter of smelters) {
+      const hasBeltOut = state.belts.some(b => {
+        const { from } = getBeltEndpoints(b);
+        return from.x === smelter.position.x && from.y === smelter.position.y;
+      });
+      if (!hasBeltOut && forgers.length > 0) {
+        const sortedForgers = forgers
+          .map(f => ({ pos: f.position, d: Math.abs(f.position.x - smelter.position.x) + Math.abs(f.position.y - smelter.position.y) }))
+          .sort((a, b) => a.d - b.d)
+          .map(f => f.pos);
+        if (placeBeltWithFallback(smelter.position, sortedForgers)) return;
+      }
+    }
+
+    const outputHub = findOutputHub();
+    for (const forger of forgers) {
+      const hasBeltOut = state.belts.some(b => {
+        const { from } = getBeltEndpoints(b);
+        return from.x === forger.position.x && from.y === forger.position.y;
+      });
+      if (!hasBeltOut) {
+        const targets: Position[] = [];
+        if (outputHub) targets.push(outputHub);
+        const sortedShops = [...shops, ...warehouses]
+          .map(s => ({ pos: s.position, d: Math.abs(s.position.x - forger.position.x) + Math.abs(s.position.y - forger.position.y) }))
+          .sort((a, b) => a.d - b.d)
+          .map(s => s.pos);
+        targets.push(...sortedShops);
+        if (placeBeltWithFallback(forger.position, targets)) return;
+      }
+    }
+  }
+
+  if (settings.autoPlaceJunction && settings.useHubRouting && forgers.length >= 3 && shops.length > 0 && junctions.length === 0) {
+    const cost = BUILDING_COSTS.junction + BELT_COST;
+    if (availableCurrency >= cost) {
+      const shop = shops[0];
+      const hubPos = findEmptyNear(shop.position, reserved);
+      if (hubPos && placeBuilding("junction", hubPos)) {
+        placeBelt(hubPos, shop.position);
+        return;
+      }
+    }
+  }
+
   if (settings.autoPlaceMiner && unmined.length > 0 && bottlenecks.needMoreMiners && smelters.length > 0) {
     const preferredOre = bottlenecks.oreTypeNeeded || settings.priorityOreType;
     const targetOre = preferredOre === "balanced" ? unmined[0] :
@@ -979,14 +1100,14 @@ export function runAutomation(state: GameState): void {
     }
   }
 
-  // Add more smelters when needed
   if (settings.autoPlaceSmelter && bottlenecks.needMoreSmelters && miners.length > 0) {
     const cost = BUILDING_COSTS.smelter + (canAutoBelt ? BELT_COST : 0);
     if (availableCurrency >= cost) {
       for (const miner of miners) {
-        const hasBeltOut = state.belts.some(b =>
-          b.from.x === miner.position.x && b.from.y === miner.position.y
-        );
+        const hasBeltOut = state.belts.some(b => {
+          const { from } = getBeltEndpoints(b);
+          return from.x === miner.position.x && from.y === miner.position.y;
+        });
         if (!hasBeltOut) {
           const smelterPos = findEmptyNear(miner.position, reserved);
           if (smelterPos && placeBuilding("smelter", smelterPos)) {
@@ -1000,7 +1121,6 @@ export function runAutomation(state: GameState): void {
     }
   }
 
-  // Add more forgers when smelters are backing up
   if (settings.autoPlaceForger && smelters.length > 0 && shops.length > 0 && !bottlenecks.needMoreForgers) {
     const smelterWithBars = smelters.find(s => s.storage.iron_bar > 3 || s.storage.copper_bar > 3);
     if (smelterWithBars) {
@@ -1022,7 +1142,6 @@ export function runAutomation(state: GameState): void {
     }
   }
 
-  // Build warehouse if backlog
   if (settings.autoPlaceWarehouse && shops.length > 0 && warehouses.length === 0 && forgers.length >= 2) {
     let backlogCount = 0;
     for (const forger of forgers) {
@@ -1047,7 +1166,6 @@ export function runAutomation(state: GameState): void {
     }
   }
 
-  // Build geologist if running low on ore
   if (settings.autoPlaceGeologist && geologists.length === 0 && shops.length > 0 && unmined.length <= 3) {
     const cost = BUILDING_COSTS.geologist;
     if (availableCurrency >= cost) {
@@ -1059,32 +1177,13 @@ export function runAutomation(state: GameState): void {
     }
   }
 
-  // Build explorer if map is getting cramped
-  if (settings.autoPlaceExplorer && explorers.length === 0 && shops.length > 0) {
-    const mapArea = state.mapWidth * state.mapHeight;
-    const buildingDensity = state.buildings.length / mapArea;
-    if (buildingDensity > 0.08) {
-      const cost = BUILDING_COSTS.explorer;
-      if (availableCurrency >= cost) {
-        const shop = shops[0];
-        const explorerPos = findEmptyNear(shop.position, reserved);
-        if (explorerPos && placeBuilding("explorer", explorerPos)) {
-          return;
-        }
-      }
-    }
-  }
-
-  // Recipe optimization
   if (settings.autoRecipeSwitch) {
-    optimizeRecipes(state);
+    optimizeRecipes(state, settings, upgrades);
   }
 }
 
-// === SMART DEFAULTS ===
-
-export function applySmartDefaults(): { automation: AutomationSettings } {
-  const settings: AutomationSettings = {
+export function applySmartDefaults(): AutomationSettings {
+  return {
     enabled: true,
     autoPlaceMiner: true,
     autoPlaceSmelter: true,
@@ -1093,7 +1192,8 @@ export function applySmartDefaults(): { automation: AutomationSettings } {
     autoPlaceBelt: true,
     autoPlaceWarehouse: true,
     autoPlaceGeologist: false,
-    autoPlaceExplorer: false,
+    autoPlaceJunction: true,
+    autoPlaceSorter: true,
     buildCompleteChains: true,
     autoRecipeSwitch: true,
     useAdvancedRecipeLogic: true,
@@ -1101,7 +1201,6 @@ export function applySmartDefaults(): { automation: AutomationSettings } {
     reserveCurrency: 50,
     useROICalculations: true,
     saveForBetterOptions: true,
+    useHubRouting: true,
   };
-  setAutomation(settings);
-  return { automation: settings };
 }

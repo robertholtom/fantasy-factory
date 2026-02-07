@@ -11,7 +11,17 @@
       "Bash(npm test:*)",
       "Bash(npm run test:*)",
       "Bash(findstr:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd //c \"taskkill /PID 115136 /F\")",
+      "Bash(cmd //c \"taskkill /PID 94496 /F\")",
+      "Bash(python:*)",
+      "Bash(node -e:*)",
+      "Bash(cmd //c \"taskkill /F /IM node.exe\")",
+      "Bash(npm outdated:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm prune:*)"
     ]
   }
 }

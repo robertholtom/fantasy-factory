@@ -1,4 +1,4 @@
-import { BuildingType, Position } from "../../../shared/types";
+import { BuildingType, Position } from "./types";
 
 export interface PlacementMode {
   active: boolean;

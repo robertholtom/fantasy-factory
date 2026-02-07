@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from "react";
-import { GameState, BuildingType } from "../../../shared/types";
+import { GameState, BuildingType } from "./types";
 import { render } from "./renderer";
 import { canvasToGrid } from "./input";
 

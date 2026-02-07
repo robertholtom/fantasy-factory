@@ -4,7 +4,6 @@ import {
   Position,
   GameState,
   GeologistExplorer,
-  ExplorerCharacter,
   Inventory,
   KingDemand,
   MultiItemDemand,
@@ -24,49 +23,56 @@ import {
   NPC_PRICE_MULTIPLIER,
   SELL_PRICES,
   getBeltTravelTime,
+  getBeltEndpoints,
   WHOLESALE_THRESHOLD,
   WHOLESALE_MULTIPLIER,
   CONSTRUCTION_TICKS,
   GEOLOGIST_UPKEEP,
   GEOLOGIST_DISCOVERY_TICKS_MIN,
   GEOLOGIST_DISCOVERY_TICKS_MAX,
-  EXPLORER_UPKEEP,
-  EXPLORER_EXPANSION_TICKS_MIN,
-  EXPLORER_EXPANSION_TICKS_MAX,
-  EXPLORER_EXPANSION_SIZE,
   KING_SPAWN_CHANCE,
   KING_MIN_TICK,
   KING_COOLDOWN_TICKS,
   KING_PRICE_MULTIPLIER,
   KING_PENALTY_DURATION,
   MULTI_ITEM_BONUS,
-  OreType,
-} from "../../shared/types.js";
-import { getState, getUpgrades, getPrestige, getAutomation, tickAutoSave, updateMetaStats, getMeta } from "./state.js";
-import { getModifiers } from "./modifiers.js";
-import { runAutomation } from "./automation.js";
-
-let intervalId: ReturnType<typeof setInterval> | null = null;
+  UPGRADE_SPEED_BONUS,
+  ALL_ITEMS,
+  ITEM_CATEGORIES,
+  UpgradeState,
+  PrestigeData,
+  AutomationSettings,
+  GameMeta,
+} from "./types";
+import { getModifiers } from "./modifiers";
+import { runAutomation } from "./automation";
 
 function findBuildingAt(buildings: Building[], x: number, y: number): Building | undefined {
   return buildings.find((b) => b.position.x === x && b.position.y === y);
 }
 
-function tick(): void {
-  const state = getState();
+function getUpgradeMultiplier(level: number): number {
+  return Math.pow(UPGRADE_SPEED_BONUS, level);
+}
+
+export function tick(
+  state: GameState,
+  upgrades: UpgradeState,
+  prestige: PrestigeData,
+  automation: AutomationSettings,
+  meta: GameMeta
+): { currencyEarned: number; itemsProduced: number } {
   state.tick++;
 
-  // Decrement King penalty
   if (state.kingPenaltyTicksLeft > 0) {
     state.kingPenaltyTicksLeft--;
   }
 
-  // Get modifiers from upgrades and prestige (pass state for King penalty)
-  const modifiers = getModifiers(getUpgrades(), getPrestige(), state);
+  const modifiers = getModifiers(upgrades, prestige, state);
   let currencyEarnedThisTick = 0;
   let itemsProducedThisTick = 0;
 
-  // 0. Construction: advance construction progress for incomplete buildings
+  // 0. Construction
   for (const building of state.buildings) {
     if (building.constructionProgress < 1) {
       const ticksNeeded = CONSTRUCTION_TICKS[building.type];
@@ -75,10 +81,9 @@ function tick(): void {
     }
   }
 
-  // 1. Production: buildings produce into their own storage (only if construction complete)
+  // 1. Production
   const EPSILON = 1e-9;
   for (const building of state.buildings) {
-    // Skip buildings under construction
     if (building.constructionProgress < 1) continue;
 
     if (building.type === "miner") {
@@ -86,7 +91,8 @@ function tick(): void {
         (n) => n.position.x === building.position.x && n.position.y === building.position.y
       );
       if (oreNode) {
-        const ticksNeeded = MINER_TICKS[oreNode.type] / modifiers.miningSpeed;
+        const upgradeBonus = getUpgradeMultiplier(building.upgradeLevel ?? 0);
+        const ticksNeeded = MINER_TICKS[oreNode.type] / (modifiers.miningSpeed * upgradeBonus);
         building.progress += 1 / ticksNeeded;
         if (building.progress >= 1 - EPSILON) {
           const oreItem: ItemType = oreNode.type === "iron" ? "iron_ore" : "copper_ore";
@@ -96,8 +102,9 @@ function tick(): void {
         }
       }
     } else if (building.type === "smelter") {
+      const upgradeBonus = getUpgradeMultiplier(building.upgradeLevel ?? 0);
       if (building.storage.iron_ore >= SMELT_ORE_COST) {
-        const ticksNeeded = SMELT_TICKS.iron / modifiers.smeltingSpeed;
+        const ticksNeeded = SMELT_TICKS.iron / (modifiers.smeltingSpeed * upgradeBonus);
         building.progress += 1 / ticksNeeded;
         if (building.progress >= 1 - EPSILON) {
           building.storage.iron_ore -= SMELT_ORE_COST;
@@ -106,7 +113,7 @@ function tick(): void {
           itemsProducedThisTick++;
         }
       } else if (building.storage.copper_ore >= SMELT_ORE_COST) {
-        const ticksNeeded = SMELT_TICKS.copper / modifiers.smeltingSpeed;
+        const ticksNeeded = SMELT_TICKS.copper / (modifiers.smeltingSpeed * upgradeBonus);
         building.progress += 1 / ticksNeeded;
         if (building.progress >= 1 - EPSILON) {
           building.storage.copper_ore -= SMELT_ORE_COST;
@@ -116,8 +123,9 @@ function tick(): void {
         }
       }
     } else if (building.type === "forger") {
+      const upgradeBonus = getUpgradeMultiplier(building.upgradeLevel ?? 0);
       const barsCost = RECIPE_BARS_COST[building.recipe];
-      const forgeTicks = RECIPE_TICKS[building.recipe] / modifiers.forgingSpeed;
+      const forgeTicks = RECIPE_TICKS[building.recipe] / (modifiers.forgingSpeed * upgradeBonus);
       const barType = RECIPE_BAR_TYPE[building.recipe];
       if (building.storage[barType] >= barsCost) {
         building.progress += 1 / forgeTicks;
@@ -131,65 +139,59 @@ function tick(): void {
     }
   }
 
-  // 2. Belt transfer: items travel based on distance (1 tick base + 1 tick per 5 cells)
+  // 2. Belt transfer
   for (const belt of state.belts) {
-    const src = findBuildingAt(state.buildings, belt.from.x, belt.from.y);
-    const dst = findBuildingAt(state.buildings, belt.to.x, belt.to.y);
+    const { from, to } = getBeltEndpoints(belt);
+    const src = findBuildingAt(state.buildings, from.x, from.y);
+    const dst = findBuildingAt(state.buildings, to.x, to.y);
     if (!src || !dst) continue;
-    // Skip if either building is under construction
     if (src.constructionProgress < 1 || dst.constructionProgress < 1) continue;
 
-    const baseTravelTime = getBeltTravelTime(belt.from, belt.to);
-    const travelTime = baseTravelTime / modifiers.beltSpeed;
-    const progressPerTick = 1 / travelTime;
+    const internalCells = getBeltTravelTime(belt);
+    const cellsPerTick = modifiers.beltSpeed;
 
-    // Initialize itemsInTransit if needed (for backwards compatibility)
     if (!belt.itemsInTransit) {
       belt.itemsInTransit = [];
     }
 
-    // Advance progress on items in transit and deliver completed ones
     belt.itemsInTransit = belt.itemsInTransit.filter((item) => {
-      item.progress += progressPerTick;
-      if (item.progress >= 1) {
-        // Deliver to destination
-        dst.storage[item.itemType] += 1;
-        return false; // Remove from transit
+      const legacyItem = item as any;
+      if (legacyItem.progress !== undefined && item.cellIndex === undefined) {
+        item.cellIndex = Math.floor(legacyItem.progress * internalCells);
+        delete legacyItem.progress;
       }
-      return true; // Keep in transit
+      if (item.cellIndex === undefined) item.cellIndex = 0;
+      item.cellIndex += cellsPerTick;
+      if (item.cellIndex >= internalCells) {
+        dst.storage[item.itemType] += 1;
+        return false;
+      }
+      return true;
     });
 
-    // Try to add new item to belt (max 1 item per tick, limit total in transit)
-    const maxItemsOnBelt = Math.max(1, travelTime); // Allow more items on longer belts
+    const maxItemsOnBelt = Math.max(1, internalCells);
     if (belt.itemsInTransit.length < maxItemsOnBelt) {
       const transferable = getTransferableItem(src, dst);
       if (transferable && src.storage[transferable] > 0) {
         src.storage[transferable] -= 1;
-        belt.itemsInTransit.push({ itemType: transferable, progress: 0 });
+        belt.itemsInTransit.push({ itemType: transferable, cellIndex: 0 });
       }
     }
   }
 
   // 3. Shop NPC processing
-  const meta = getMeta();
   for (const building of state.buildings) {
     if (building.type !== "shop") continue;
 
-    // Try to spawn King first (separate from normal NPCs)
     trySpawnKing(state, building, modifiers.npcPatience);
-
-    // Try to spawn multi-item NPCs (Noble/Adventurer)
     trySpawnMultiItemNpc(building, modifiers.npcPatience);
 
-    // Spawn normal NPCs: if queue < max and random chance (affected by penalty)
     const effectiveSpawnChance = NPC_SPAWN_CHANCE * modifiers.npcSpawnChance;
     if (building.npcQueue.length < NPC_MAX_QUEUE && Math.random() < effectiveSpawnChance) {
       building.npcQueue.push(spawnNpc(modifiers.npcPatience));
     }
 
-    // Fulfill: serve NPCs whose wanted item is in shop storage
     building.npcQueue = building.npcQueue.filter((npc) => {
-      // Handle King NPCs specially
       if (npc.npcType === "king" && npc.kingDemand) {
         if (canFulfillKingDemand(building.storage, npc.kingDemand)) {
           fulfillKingDemand(building.storage, npc.kingDemand);
@@ -197,12 +199,11 @@ function tick(): void {
           state.currency += earned;
           currencyEarnedThisTick += earned;
           meta.totalCurrencyEarned += earned;
-          return false; // King leaves after being served
+          return false;
         }
-        return true; // King stays
+        return true;
       }
 
-      // Handle multi-item NPCs (Noble/Adventurer)
       if (npc.multiItemDemand) {
         if (canFulfillMultiItemDemand(building.storage, npc.multiItemDemand)) {
           fulfillMultiItemDemand(building.storage, npc.multiItemDemand);
@@ -210,12 +211,11 @@ function tick(): void {
           state.currency += earned;
           currencyEarnedThisTick += earned;
           meta.totalCurrencyEarned += earned;
-          return false; // NPC leaves after being served
+          return false;
         }
-        return true; // NPC stays
+        return true;
       }
 
-      // Normal NPC handling
       if (building.storage[npc.wantedItem] > 0) {
         building.storage[npc.wantedItem] -= 1;
         const basePrice = SELL_PRICES[npc.wantedItem];
@@ -226,16 +226,14 @@ function tick(): void {
         const earned = Math.round(basePrice * mult * modifiers.sellPrice);
         state.currency += earned;
         currencyEarnedThisTick += earned;
-        return false; // NPC leaves after being served
+        return false;
       }
-      return true; // NPC stays
+      return true;
     });
 
-    // Patience: tick down and remove timed-out NPCs
     building.npcQueue = building.npcQueue.filter((npc) => {
       npc.patienceLeft -= 1;
       if (npc.patienceLeft <= 0) {
-        // King leaving triggers penalty
         if (npc.npcType === "king") {
           state.kingPenaltyTicksLeft = KING_PENALTY_DURATION;
         }
@@ -249,11 +247,9 @@ function tick(): void {
   for (const building of state.buildings) {
     if (building.type !== "warehouse") continue;
 
-    // Check each finished good type
     for (const item of FINISHED_GOODS) {
       const count = building.storage[item];
       if (count >= WHOLESALE_THRESHOLD) {
-        // Sell all items at wholesale price
         const basePrice = SELL_PRICES[item];
         const wholesalePrice = Math.floor(basePrice * WHOLESALE_MULTIPLIER * modifiers.sellPrice);
         const earned = wholesalePrice * count;
@@ -264,50 +260,42 @@ function tick(): void {
     }
   }
 
-  // 5. Geologist explorer movement and ore discovery
+  // 5. Geologist explorer
   const activeGeologist = state.buildings.find(
     b => b.type === "geologist" && b.constructionProgress >= 1
   );
 
   if (activeGeologist) {
-    // Deduct upkeep if player can afford it
     if (state.currency >= GEOLOGIST_UPKEEP) {
       state.currency -= GEOLOGIST_UPKEEP;
 
-      // Initialize explorer if not exists
       if (!state.geologistExplorer) {
         state.geologistExplorer = createGeologistExplorer(state, activeGeologist.position);
       }
 
       const explorer = state.geologistExplorer;
 
-      // Move explorer towards target
-      const moveSpeed = 0.5; // cells per tick
+      const moveSpeed = 0.5;
       const dx = explorer.targetPosition.x - explorer.position.x;
       const dy = explorer.targetPosition.y - explorer.position.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (dist > moveSpeed) {
-        // Move towards target
         explorer.position.x += (dx / dist) * moveSpeed;
         explorer.position.y += (dy / dist) * moveSpeed;
       } else {
-        // Reached target, pick new target
         explorer.position.x = explorer.targetPosition.x;
         explorer.position.y = explorer.targetPosition.y;
         explorer.targetPosition = pickRandomExplorerTarget(state);
       }
 
-      // Count down to discovery
       explorer.ticksUntilDiscovery--;
 
       if (explorer.ticksUntilDiscovery <= 0) {
-        // Discover ore at a random position near explorer
         const occupiedPositions = new Set<string>();
         state.oreNodes.forEach(n => occupiedPositions.add(`${n.position.x},${n.position.y}`));
         state.buildings.forEach(b => occupiedPositions.add(`${b.position.x},${b.position.y}`));
 
-        // Try to find an empty spot near the explorer
         let discovered = false;
         for (let radius = 0; radius <= 5 && !discovered; radius++) {
           for (let attempt = 0; attempt < 8 && !discovered; attempt++) {
@@ -330,85 +318,25 @@ function tick(): void {
           }
         }
 
-        // Set new random discovery time
         explorer.ticksUntilDiscovery = randomInt(GEOLOGIST_DISCOVERY_TICKS_MIN, GEOLOGIST_DISCOVERY_TICKS_MAX);
       }
 
-      // Update search progress for visual effect (based on ticks until discovery)
       const totalTicks = (GEOLOGIST_DISCOVERY_TICKS_MIN + GEOLOGIST_DISCOVERY_TICKS_MAX) / 2;
       explorer.searchProgress = 1 - (explorer.ticksUntilDiscovery / totalTicks);
     }
   } else {
-    // No active geologist, remove explorer
     state.geologistExplorer = null;
   }
 
-  // 6. Explorer character movement and map expansion
-  const activeExplorer = state.buildings.find(
-    b => b.type === "explorer" && b.constructionProgress >= 1
-  );
-
-  if (activeExplorer) {
-    // Deduct upkeep if player can afford it
-    if (state.currency >= EXPLORER_UPKEEP) {
-      state.currency -= EXPLORER_UPKEEP;
-
-      // Initialize explorer character if not exists
-      if (!state.explorerCharacter) {
-        state.explorerCharacter = createExplorerCharacter(state, activeExplorer.position);
-      }
-
-      const explorer = state.explorerCharacter;
-
-      // Move explorer along map edges (0.4 cells/tick)
-      const moveSpeed = 0.4;
-      const dx = explorer.targetPosition.x - explorer.position.x;
-      const dy = explorer.targetPosition.y - explorer.position.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist > moveSpeed) {
-        explorer.position.x += (dx / dist) * moveSpeed;
-        explorer.position.y += (dy / dist) * moveSpeed;
-      } else {
-        // Reached target, pick new edge target
-        explorer.position.x = explorer.targetPosition.x;
-        explorer.position.y = explorer.targetPosition.y;
-        explorer.targetPosition = pickEdgeTarget(state, explorer);
-      }
-
-      // Count down to expansion
-      explorer.ticksUntilExpansion--;
-
-      if (explorer.ticksUntilExpansion <= 0) {
-        // Expand the map
-        expandMap(state, explorer);
-
-        // Reset countdown
-        explorer.ticksUntilExpansion = randomInt(EXPLORER_EXPANSION_TICKS_MIN, EXPLORER_EXPANSION_TICKS_MAX);
-      }
-
-      // Update expansion progress for visual effect
-      const totalTicks = (EXPLORER_EXPANSION_TICKS_MIN + EXPLORER_EXPANSION_TICKS_MAX) / 2;
-      explorer.expansionProgress = 1 - (explorer.ticksUntilExpansion / totalTicks);
-    }
-  } else {
-    // No active explorer, remove character
-    state.explorerCharacter = null;
-  }
-
-  // 7. Automation
-  const automation = getAutomation();
+  // 6. Automation
   if (automation.enabled) {
-    runAutomation(state);
+    runAutomation(state, upgrades, automation);
   }
 
-  // 8. Update meta stats and auto-save
-  updateMetaStats(currencyEarnedThisTick, itemsProducedThisTick);
-  tickAutoSave();
+  return { currencyEarned: currencyEarnedThisTick, itemsProduced: itemsProducedThisTick };
 }
 
 function getTransferableItem(src: Building, dst: Building): ItemType | null {
-  // Transfer what the destination building can consume
   if (dst.type === "smelter") {
     if (src.storage.iron_ore > 0) return "iron_ore";
     if (src.storage.copper_ore > 0) return "copper_ore";
@@ -422,14 +350,27 @@ function getTransferableItem(src: Building, dst: Building): ItemType | null {
   }
 
   if (dst.type === "shop" || dst.type === "warehouse") {
-    // Shops and warehouses accept any finished good
     for (const item of FINISHED_GOODS) {
       if (src.storage[item] > 0) return item;
     }
     return null;
   }
 
-  // For miners or other sources with no specific need, transfer any item
+  if (dst.type === "junction") {
+    for (const item of ALL_ITEMS) {
+      if (src.storage[item] > 0) return item;
+    }
+    return null;
+  }
+
+  if (dst.type === "sorter") {
+    const allowed = ITEM_CATEGORIES[dst.sorterFilter ?? "all"];
+    for (const item of allowed) {
+      if (src.storage[item] > 0) return item;
+    }
+    return null;
+  }
+
   const items: ItemType[] = ["iron_ore", "iron_bar", "dagger", "armour", "copper_ore", "copper_bar", "wand", "magic_powder"];
   for (const item of items) {
     if (src.storage[item] > 0) return item;
@@ -451,7 +392,6 @@ function createGeologistExplorer(state: GameState, startPos: Position): Geologis
 }
 
 function pickRandomExplorerTarget(state: GameState): Position {
-  // Pick a random position on the map, preferring unexplored areas
   return {
     x: Math.floor(Math.random() * state.mapWidth),
     y: Math.floor(Math.random() * state.mapHeight),
@@ -502,7 +442,6 @@ function generateKingDemand(tick: number): KingDemand {
 }
 
 function trySpawnKing(state: GameState, shop: Building, patienceMultiplier: number): boolean {
-  // Eligibility checks
   if (state.tick < KING_MIN_TICK) return false;
   if (state.tick - state.lastKingTick < KING_COOLDOWN_TICKS) return false;
   if (state.kingPenaltyTicksLeft > 0) return false;
@@ -517,7 +456,7 @@ function trySpawnKing(state: GameState, shop: Building, patienceMultiplier: numb
     shop.npcQueue.push({
       id: `king-${Date.now()}`,
       npcType: "king",
-      wantedItem: "dagger",  // Unused for king
+      wantedItem: "dagger",
       kingDemand: demand,
       patienceLeft: patience,
       maxPatience: patience,
@@ -541,7 +480,7 @@ function fulfillKingDemand(storage: Inventory, demand: KingDemand): void {
 
 function trySpawnMultiItemNpc(shop: Building, patienceMultiplier: number): boolean {
   if (shop.npcQueue.length >= NPC_MAX_QUEUE) return false;
-  if (Math.random() >= 0.03) return false;  // 3% chance per tick
+  if (Math.random() >= 0.03) return false;
 
   const npcType: "noble" | "adventurer" = Math.random() < 0.5 ? "noble" : "adventurer";
   const items: { item: FinishedGood; quantity: number }[] = npcType === "noble"
@@ -557,7 +496,7 @@ function trySpawnMultiItemNpc(shop: Building, patienceMultiplier: number): boole
   shop.npcQueue.push({
     id: `${npcType}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     npcType,
-    wantedItem: items[0].item,  // Fallback for display
+    wantedItem: items[0].item,
     multiItemDemand: {
       items,
       totalValue,
@@ -577,85 +516,5 @@ function canFulfillMultiItemDemand(storage: Inventory, demand: MultiItemDemand):
 function fulfillMultiItemDemand(storage: Inventory, demand: MultiItemDemand): void {
   for (const { item, quantity } of demand.items) {
     storage[item] -= quantity;
-  }
-}
-
-function createExplorerCharacter(state: GameState, startPos: Position): ExplorerCharacter {
-  return {
-    position: { x: startPos.x, y: startPos.y },
-    targetPosition: pickEdgeTarget(state, null),
-    expansionProgress: 0,
-    ticksUntilExpansion: randomInt(EXPLORER_EXPANSION_TICKS_MIN, EXPLORER_EXPANSION_TICKS_MAX),
-    lastExpandedSide: "right", // Will start with bottom on first expansion
-  };
-}
-
-function pickEdgeTarget(state: GameState, explorer: ExplorerCharacter | null): Position {
-  // Pick a position along the right or bottom edge of the map
-  const edge = Math.random() < 0.5 ? "right" : "bottom";
-
-  if (edge === "right") {
-    return {
-      x: state.mapWidth - 1,
-      y: Math.floor(Math.random() * state.mapHeight),
-    };
-  } else {
-    return {
-      x: Math.floor(Math.random() * state.mapWidth),
-      y: state.mapHeight - 1,
-    };
-  }
-}
-
-function expandMap(state: GameState, explorer: ExplorerCharacter): void {
-  // Alternate between expanding right and bottom
-  const side = explorer.lastExpandedSide === "right" ? "bottom" : "right";
-  explorer.lastExpandedSide = side;
-
-  if (side === "right") {
-    state.mapWidth += EXPLORER_EXPANSION_SIZE;
-  } else {
-    state.mapHeight += EXPLORER_EXPANSION_SIZE;
-  }
-
-  // 25% chance to spawn ore in the newly expanded area
-  if (Math.random() < 0.25) {
-    const oreType: OreType = Math.random() < 0.5 ? "iron" : "copper";
-    let x: number, y: number;
-
-    if (side === "right") {
-      // New area is on the right
-      x = state.mapWidth - Math.floor(Math.random() * EXPLORER_EXPANSION_SIZE) - 1;
-      y = Math.floor(Math.random() * state.mapHeight);
-    } else {
-      // New area is on the bottom
-      x = Math.floor(Math.random() * state.mapWidth);
-      y = state.mapHeight - Math.floor(Math.random() * EXPLORER_EXPANSION_SIZE) - 1;
-    }
-
-    // Check not occupied
-    const occupied = state.buildings.some(b => b.position.x === x && b.position.y === y) ||
-                     state.oreNodes.some(n => n.position.x === x && n.position.y === y);
-
-    if (!occupied) {
-      state.oreNodes.push({
-        id: `ore-expanded-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        position: { x, y },
-        type: oreType,
-      });
-    }
-  }
-}
-
-export function startGameLoop(): void {
-  if (intervalId) return;
-  intervalId = setInterval(tick, 1000);
-  console.log("Game loop started (1 tick/second)");
-}
-
-export function stopGameLoop(): void {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
   }
 }

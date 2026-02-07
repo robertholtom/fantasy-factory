@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import {
   GameState,
   BuildingType,
+  Building,
   BUILDING_COSTS,
   BELT_COST,
   GEOLOGIST_MAX_COUNT,
   GEOLOGIST_UPKEEP,
-  EXPLORER_MAX_COUNT,
-  EXPLORER_UPKEEP,
+  BASE_LAND_COST,
+  LAND_COST_MULTIPLIER,
   PrestigeData,
   UpgradeState,
   AutomationSettings,
@@ -15,23 +16,15 @@ import {
   OfflineProgress,
   PRESTIGE_UPGRADES,
   PrestigeUpgradeId,
-  UpgradeId,
-  Npc,
   SELL_PRICES,
-} from "../../../shared/types";
+  UPGRADE_COSTS,
+  MAX_UPGRADE_LEVEL,
+  UPGRADE_SPEED_BONUS,
+  SorterFilter,
+} from "./types";
 import { ITEM_ICONS } from "./icons";
 import { PlacementMode } from "./GameCanvas";
-import {
-  getPrestigeInfo,
-  performPrestige,
-  buyPrestigeUpgrade,
-  getUpgradeInfo,
-  buyUpgrade,
-  updateAutomation,
-  applySmartDefaults,
-  PrestigeInfo,
-  UpgradeInfo,
-} from "./api";
+import { GameEngine, PrestigeInfo, UpgradeInfo } from "./useGameEngine";
 
 interface Props {
   state: GameState | null;
@@ -42,6 +35,7 @@ interface Props {
   offlineProgress: OfflineProgress | null;
   placementMode: PlacementMode;
   error: string | null;
+  selectedBuilding: Building | null;
   onBuy: (type: BuildingType) => void;
   onStartBelt: () => void;
   onStartDemolish: () => void;
@@ -50,6 +44,10 @@ interface Props {
   onCancelPlacement: () => void;
   onDismissOffline: () => void;
   onAutomationChange: () => void;
+  onUpgradeBuilding: () => void;
+  onDeselectBuilding: () => void;
+  onPurchaseLand: (side: "right" | "bottom") => void;
+  gameEngine: GameEngine;
 }
 
 type Tab = "main" | "upgrades" | "prestige" | "automation";
@@ -63,6 +61,7 @@ export default function HUD({
   offlineProgress,
   placementMode,
   error,
+  selectedBuilding,
   onBuy,
   onStartBelt,
   onStartDemolish,
@@ -71,6 +70,10 @@ export default function HUD({
   onCancelPlacement,
   onDismissOffline,
   onAutomationChange,
+  onUpgradeBuilding,
+  onDeselectBuilding,
+  onPurchaseLand,
+  gameEngine,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("main");
   const [prestigeInfo, setPrestigeInfo] = useState<PrestigeInfo | null>(null);
@@ -80,11 +83,11 @@ export default function HUD({
 
   useEffect(() => {
     if (activeTab === "prestige") {
-      getPrestigeInfo().then(setPrestigeInfo);
+      setPrestigeInfo(gameEngine.getPrestigeInfo());
     } else if (activeTab === "upgrades") {
-      getUpgradeInfo().then(setUpgradeInfo);
+      setUpgradeInfo(gameEngine.getUpgradeInfo());
     }
-  }, [activeTab]);
+  }, [activeTab, gameEngine]);
 
   useEffect(() => {
     if (automation) {
@@ -165,6 +168,60 @@ export default function HUD({
           <div className="star-essence">Star Essence: {prestige.starEssence}</div>
         )}
       </div>
+
+      {selectedBuilding && (
+        <div className="hud-section building-upgrade-panel">
+          <h3>Selected: {selectedBuilding.type}</h3>
+          <div className="upgrade-info">
+            <p>Level: {selectedBuilding.upgradeLevel ?? 0} / {MAX_UPGRADE_LEVEL}</p>
+            <p>Speed: x{Math.pow(UPGRADE_SPEED_BONUS, selectedBuilding.upgradeLevel ?? 0).toFixed(2)}</p>
+            {(selectedBuilding.upgradeLevel ?? 0) < MAX_UPGRADE_LEVEL ? (
+              <>
+                <p>Next upgrade: ${UPGRADE_COSTS[selectedBuilding.upgradeLevel ?? 0]}</p>
+                <button
+                  onClick={onUpgradeBuilding}
+                  disabled={currency < UPGRADE_COSTS[selectedBuilding.upgradeLevel ?? 0] || selectedBuilding.constructionProgress < 1}
+                >
+                  Upgrade
+                </button>
+              </>
+            ) : (
+              <p className="max-level">MAX LEVEL</p>
+            )}
+            {selectedBuilding.type === "sorter" && (
+              <div className="sorter-filter">
+                <label>
+                  Filter:
+                  <select
+                    value={selectedBuilding.sorterFilter ?? "all"}
+                    onChange={(e) => {
+                      gameEngine.setSorterFilter(selectedBuilding.id, e.target.value as SorterFilter);
+                    }}
+                  >
+                    <optgroup label="Categories">
+                      <option value="all">All Items</option>
+                      <option value="ore">Ores</option>
+                      <option value="bar">Bars</option>
+                      <option value="finished">Finished Goods</option>
+                    </optgroup>
+                    <optgroup label="Specific Items">
+                      <option value="iron_ore">Iron Ore</option>
+                      <option value="copper_ore">Copper Ore</option>
+                      <option value="iron_bar">Iron Bar</option>
+                      <option value="copper_bar">Copper Bar</option>
+                      <option value="dagger">Dagger</option>
+                      <option value="armour">Armour</option>
+                      <option value="wand">Wand</option>
+                      <option value="magic_powder">Magic Powder</option>
+                    </optgroup>
+                  </select>
+                </label>
+              </div>
+            )}
+            <button className="deselect-btn" onClick={onDeselectBuilding}>Close</button>
+          </div>
+        </div>
+      )}
 
       <div className="hud-section">
         <h3>Shop Stock</h3>
@@ -304,15 +361,18 @@ export default function HUD({
             Geologist ${BUILDING_COSTS.geologist}
           </button>
           <button
-            onClick={() => onBuy("explorer")}
-            disabled={
-              currency < BUILDING_COSTS.explorer ||
-              inPlacement ||
-              state.buildings.filter(b => b.type === "explorer").length >= EXPLORER_MAX_COUNT
-            }
-            title={`Expands the map over time. Upkeep: $${EXPLORER_UPKEEP}/tick`}
+            onClick={() => onBuy("junction")}
+            disabled={currency < BUILDING_COSTS.junction || inPlacement}
+            title="Pass-through node for routing items"
           >
-            Explorer ${BUILDING_COSTS.explorer}
+            Junction ${BUILDING_COSTS.junction}
+          </button>
+          <button
+            onClick={() => onBuy("sorter")}
+            disabled={currency < BUILDING_COSTS.sorter || inPlacement}
+            title="Filtered junction - only accepts configured items"
+          >
+            Sorter ${BUILDING_COSTS.sorter}
           </button>
           <button
             onClick={onStartBelt}
@@ -327,6 +387,28 @@ export default function HUD({
           >
             Demolish (75% refund)
           </button>
+        </div>
+        <h3>Expand Map</h3>
+        <div className="buttons">
+          {(() => {
+            const landCost = Math.floor(BASE_LAND_COST * Math.pow(LAND_COST_MULTIPLIER, state.tilesPurchased));
+            return (
+              <>
+                <button
+                  onClick={() => onPurchaseLand("right")}
+                  disabled={currency < landCost || inPlacement}
+                >
+                  Expand Right ${landCost}
+                </button>
+                <button
+                  onClick={() => onPurchaseLand("bottom")}
+                  disabled={currency < landCost || inPlacement}
+                >
+                  Expand Down ${landCost}
+                </button>
+              </>
+            );
+          })()}
         </div>
         {placementMode?.kind === "building" && (
           <div className="placement-info">
@@ -418,10 +500,10 @@ export default function HUD({
               <p className="upgrade-desc">{def.description}</p>
               <button
                 disabled={!canAfford}
-                onClick={async () => {
-                  const result = await buyUpgrade(id);
+                onClick={() => {
+                  const result = gameEngine.buyUpgrade(id);
                   if (result.success) {
-                    getUpgradeInfo().then(setUpgradeInfo);
+                    setUpgradeInfo(gameEngine.getUpgradeInfo());
                   }
                 }}
               >
@@ -474,10 +556,10 @@ export default function HUD({
               <p>Prestige now for +{prestigeInfo.potentialEssence} Star Essence</p>
               <button
                 className="prestige-btn"
-                onClick={async () => {
-                  const result = await performPrestige();
+                onClick={() => {
+                  const result = gameEngine.performPrestige();
                   if (result.success) {
-                    getPrestigeInfo().then(setPrestigeInfo);
+                    setPrestigeInfo(gameEngine.getPrestigeInfo());
                     window.location.reload();
                   }
                 }}
@@ -507,10 +589,10 @@ export default function HUD({
               {!maxed && (
                 <button
                   disabled={!canAfford}
-                  onClick={async () => {
-                    const result = await buyPrestigeUpgrade(id);
+                  onClick={() => {
+                    const result = gameEngine.buyPrestigeUpgrade(id);
                     if (result.success) {
-                      getPrestigeInfo().then(setPrestigeInfo);
+                      setPrestigeInfo(gameEngine.getPrestigeInfo());
                     }
                   }}
                 >
@@ -538,28 +620,28 @@ export default function HUD({
 
     const hasAutoRecipe = upgrades?.purchased.includes("auto_recipe") ?? false;
 
-    const toggle = async (key: keyof AutomationSettings) => {
+    const toggle = (key: keyof AutomationSettings) => {
       const newValue = !localAutomation[key];
       const updated = { ...localAutomation, [key]: newValue };
       setLocalAutomation(updated);
-      await updateAutomation({ [key]: newValue });
+      gameEngine.updateAutomation({ [key]: newValue });
     };
 
-    const setReserve = async (value: number) => {
+    const setReserve = (value: number) => {
       const updated = { ...localAutomation, reserveCurrency: value };
       setLocalAutomation(updated);
-      await updateAutomation({ reserveCurrency: value });
+      gameEngine.updateAutomation({ reserveCurrency: value });
     };
 
-    const setPriority = async (value: "iron" | "copper" | "balanced") => {
+    const setPriority = (value: "iron" | "copper" | "balanced") => {
       const updated = { ...localAutomation, priorityOreType: value };
       setLocalAutomation(updated);
-      await updateAutomation({ priorityOreType: value });
+      gameEngine.updateAutomation({ priorityOreType: value });
     };
 
-    const handleSmartDefaults = async () => {
-      const result = await applySmartDefaults();
-      setLocalAutomation(result.automation);
+    const handleSmartDefaults = () => {
+      const result = gameEngine.applySmartDefaults();
+      setLocalAutomation(result);
       onAutomationChange();
     };
 
@@ -675,11 +757,23 @@ export default function HUD({
           <label>
             <input
               type="checkbox"
-              checked={localAutomation.autoPlaceExplorer ?? false}
-              onChange={() => toggle("autoPlaceExplorer")}
+              checked={localAutomation.autoPlaceJunction ?? false}
+              onChange={() => toggle("autoPlaceJunction")}
               disabled={!localAutomation.enabled}
             />
-            Auto Explorers
+            Auto Junctions
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.autoPlaceSorter ?? false}
+              onChange={() => toggle("autoPlaceSorter")}
+              disabled={!localAutomation.enabled}
+            />
+            Auto Sorters
           </label>
         </div>
 
@@ -718,6 +812,18 @@ export default function HUD({
               disabled={!localAutomation.enabled}
             />
             Save for Better Options
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.useHubRouting ?? false}
+              onChange={() => toggle("useHubRouting")}
+              disabled={!localAutomation.enabled}
+            />
+            Use Hub Routing
           </label>
         </div>
 

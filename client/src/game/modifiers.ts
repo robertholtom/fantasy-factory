@@ -6,24 +6,23 @@ import {
   PrestigeUpgradeId,
   GameState,
   KING_PENALTY_MULTIPLIER,
-} from "../../shared/types.js";
+} from "./types";
 
 export interface Modifiers {
-  productionSpeed: number;      // Multiplier for all production
-  miningSpeed: number;          // Multiplier for miners specifically
-  smeltingSpeed: number;        // Multiplier for smelters
-  forgingSpeed: number;         // Multiplier for forgers
-  beltSpeed: number;            // Multiplier for belt transfer
-  sellPrice: number;            // Multiplier for sell prices
-  storageCapacity: number;      // Added storage slots
-  npcPatience: number;          // Multiplier for NPC patience
-  npcSpawnChance: number;       // Multiplier for NPC spawn rate
-  offlineEfficiency: number;    // Multiplier for offline progress
-  startingCurrency: number;     // Bonus starting currency
-  mapExpansion: number;         // Added map size
+  productionSpeed: number;
+  miningSpeed: number;
+  smeltingSpeed: number;
+  forgingSpeed: number;
+  beltSpeed: number;
+  sellPrice: number;
+  storageCapacity: number;
+  npcPatience: number;
+  npcSpawnChance: number;
+  offlineEfficiency: number;
+  startingCurrency: number;
+  mapExpansion: number;
 }
 
-// Upgrade effect definitions
 const UPGRADE_EFFECTS: Record<UpgradeId, (m: Modifiers) => void> = {
   mining_efficiency_1: (m) => { m.miningSpeed *= 1.10; },
   mining_efficiency_2: (m) => { m.miningSpeed *= 1.15; },
@@ -37,14 +36,13 @@ const UPGRADE_EFFECTS: Record<UpgradeId, (m: Modifiers) => void> = {
   extended_storage: (m) => { m.storageCapacity += 2; },
   patient_customers: (m) => { m.npcPatience *= 1.20; },
   premium_pricing: (m) => { m.sellPrice *= 1.15; },
-  auto_recipe: (m) => { /* Unlocks auto-recipe in automation */ },
-  automation_mastery: (m) => { /* Unlocks full auto-play */ },
-  warehouse_efficiency: (m) => { m.sellPrice *= 1.10; }, // Better wholesale prices
+  auto_recipe: () => { /* Unlocks auto-recipe in automation */ },
+  automation_mastery: () => { /* Unlocks full auto-play */ },
+  warehouse_efficiency: (m) => { m.sellPrice *= 1.10; },
   map_expansion: (m) => { m.mapExpansion += 10; },
 };
 
 export function getModifiers(upgrades: UpgradeState, prestige: PrestigeData, state?: GameState): Modifiers {
-  // Start with base modifiers
   const m: Modifiers = {
     productionSpeed: 1,
     miningSpeed: 1,
@@ -88,7 +86,6 @@ export function getModifiers(upgrades: UpgradeState, prestige: PrestigeData, sta
   return m;
 }
 
-// Check if an automation feature is unlocked
 export function isAutomationUnlocked(upgrades: UpgradeState, feature: "autoRecipe" | "fullAuto"): boolean {
   switch (feature) {
     case "autoRecipe":
@@ -100,7 +97,6 @@ export function isAutomationUnlocked(upgrades: UpgradeState, feature: "autoRecip
   }
 }
 
-// Get prestige upgrade level from bonuses (reverse calculation)
 export function getPrestigeUpgradeLevel(prestige: PrestigeData, upgradeId: PrestigeUpgradeId): number {
   const upgrade = PRESTIGE_UPGRADES[upgradeId];
   const currentBonus = (() => {
@@ -113,7 +109,6 @@ export function getPrestigeUpgradeLevel(prestige: PrestigeData, upgradeId: Prest
     }
   })();
 
-  // Reverse the effect function to find level
   for (let level = upgrade.maxLevel; level >= 0; level--) {
     if (upgrade.effect(level) === currentBonus) {
       return level;
