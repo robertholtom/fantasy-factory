@@ -93,8 +93,9 @@ export function findPath(
   const start = posKey(from);
   const goal = posKey(to);
 
-  if (Math.abs(from.x - to.x) + Math.abs(from.y - to.y) === 1) {
-    return [from, to];
+  // Adjacent cells cannot have belts - require at least 1 space between buildings
+  if (Math.abs(from.x - to.x) + Math.abs(from.y - to.y) <= 1) {
+    return null;
   }
 
   interface Node {
