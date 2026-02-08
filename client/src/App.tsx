@@ -88,7 +88,7 @@ function App() {
 
       // If clicking the same building, cycle forger recipe
       if (selectedBuilding?.id === buildingId && building.type === "forger") {
-        const recipeOrder: ForgerRecipe[] = ["dagger", "armour", "wand", "magic_powder"];
+        const recipeOrder: ForgerRecipe[] = ["dagger", "armour", "wand", "magic_powder", "sword"];
         const idx = recipeOrder.indexOf(building.recipe);
         const newRecipe = recipeOrder[(idx + 1) % recipeOrder.length];
         const result = game.setRecipe(buildingId, newRecipe);

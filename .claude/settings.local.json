@@ -21,7 +21,10 @@
       "Bash(cmd //c \"taskkill /F /IM node.exe\")",
       "Bash(npm outdated:*)",
       "Bash(npm ls:*)",
-      "Bash(npm prune:*)"
+      "Bash(npm prune:*)",
+      "Bash(npx vitest run)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

@@ -61,7 +61,7 @@ function analyzeProductionChains(state: GameState): ProductionChain[] {
       if (miner && miner.constructionProgress >= 1) {
         const oreNode = state.oreNodes.find(n => n.position.x === miner.position.x && n.position.y === miner.position.y);
         if (oreNode) {
-          oreType = oreNode.type;
+          oreType = oreNode.type === "copper" ? "copper" : "iron";
           minerCount++;
         }
       }
@@ -152,6 +152,9 @@ export function calculateOfflineProgress(
         copper_bar: 0,
         wand: 0,
         magic_powder: 0,
+        coal: 0,
+        steel_bar: 0,
+        sword: 0,
       },
       efficiency: offlineEfficiency,
     };
@@ -168,6 +171,9 @@ export function calculateOfflineProgress(
     copper_bar: 0,
     wand: 0,
     magic_powder: 0,
+    coal: 0,
+    steel_bar: 0,
+    sword: 0,
   };
 
   let currencyEarned = 0;

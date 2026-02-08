@@ -32,7 +32,8 @@ function generateOreNodes(): OreNode[] {
     const key = `${x},${y}`;
     if (!positions.has(key)) {
       positions.add(key);
-      const type: OreType = Math.random() < 0.5 ? "iron" : "copper";
+      const roll = Math.random();
+      const type: OreType = roll < 0.3 ? "coal" : roll < 0.65 ? "iron" : "copper";
       nodes.push({ id: `ore-${nodes.length}`, position: { x, y }, type });
     }
   }
@@ -52,6 +53,9 @@ export function createInitialState(): GameState {
       copper_bar: 0,
       wand: 0,
       magic_powder: 0,
+      coal: 0,
+      steel_bar: 0,
+      sword: 0,
     },
     buildings: [],
     belts: [],

@@ -66,6 +66,8 @@ export function createDefaultAutomation(): AutomationSettings {
     useHubRouting: false,
     priorityOreType: "balanced",
     reserveCurrency: 100,
+    enableRestructuring: false,
+    lastRestructureTick: 0,
   };
 }
 
@@ -245,6 +247,21 @@ function migrateSave(save: GameSave): void {
   for (const building of save.state.buildings) {
     building.upgradeLevel ??= 0;
   }
+
+  // Ensure new inventory fields exist
+  save.state.inventory.coal ??= 0;
+  save.state.inventory.steel_bar ??= 0;
+  save.state.inventory.sword ??= 0;
+
+  for (const building of save.state.buildings) {
+    building.storage.coal ??= 0;
+    building.storage.steel_bar ??= 0;
+    building.storage.sword ??= 0;
+  }
+
+  // Ensure restructuring fields exist
+  save.automation.enableRestructuring ??= false;
+  save.automation.lastRestructureTick ??= 0;
 
   save.version = SAVE_VERSION;
 }

@@ -5,15 +5,15 @@ export interface Position {
 
 export type BuildingType = "miner" | "smelter" | "forger" | "shop" | "warehouse" | "geologist" | "junction" | "sorter";
 
-export type OreType = "iron" | "copper";
+export type OreType = "iron" | "copper" | "coal";
 
-export type ForgerRecipe = "dagger" | "armour" | "wand" | "magic_powder";
+export type ForgerRecipe = "dagger" | "armour" | "wand" | "magic_powder" | "sword";
 
-export type SorterFilter = ItemType | "ore" | "bar" | "finished" | "all";
+export type SorterFilter = ItemType | "ore" | "bar" | "finished" | "all" | "coal" | "steel_bar" | "sword";
 
-export type NpcType = "warrior" | "mage" | "collector" | "merchant" | "noble" | "adventurer" | "king";
+export type NpcType = "warrior" | "mage" | "collector" | "merchant" | "noble" | "adventurer" | "king" | "knight";
 
-export type FinishedGood = "dagger" | "armour" | "wand" | "magic_powder";
+export type FinishedGood = "dagger" | "armour" | "wand" | "magic_powder" | "sword";
 
 export interface KingDemand {
   items: { item: FinishedGood; quantity: number }[];
@@ -197,7 +197,10 @@ export type ItemType =
   | "copper_ore"
   | "copper_bar"
   | "wand"
-  | "magic_powder";
+  | "magic_powder"
+  | "coal"
+  | "steel_bar"
+  | "sword";
 
 export type Inventory = Record<ItemType, number>;
 
@@ -254,20 +257,27 @@ export const BELT_COST = 5;
 export const MINER_TICKS: Record<OreType, number> = {
   iron: 3,
   copper: 4,
+  coal: 3,
 };
 
 export const SMELT_TICKS: Record<OreType, number> = {
   iron: 5,
   copper: 4,
+  coal: 0, // coal not smelted directly
 };
 
 export const SMELT_ORE_COST = 3;
+
+export const SMELT_STEEL_IRON_COST = 2;
+export const SMELT_STEEL_COAL_COST = 2;
+export const SMELT_STEEL_TICKS = 6;
 
 export const SELL_PRICES: Record<string, number> = {
   dagger: 35,
   armour: 60,
   wand: 40,
   magic_powder: 65,
+  sword: 90,
 };
 
 export const RECIPE_BARS_COST: Record<ForgerRecipe, number> = {
@@ -275,6 +285,7 @@ export const RECIPE_BARS_COST: Record<ForgerRecipe, number> = {
   armour: 3,
   wand: 2,
   magic_powder: 4,
+  sword: 3,
 };
 
 export const RECIPE_TICKS: Record<ForgerRecipe, number> = {
@@ -282,32 +293,37 @@ export const RECIPE_TICKS: Record<ForgerRecipe, number> = {
   armour: 8,
   wand: 6,
   magic_powder: 10,
+  sword: 7,
 };
 
-export const RECIPE_BAR_TYPE: Record<ForgerRecipe, "iron_bar" | "copper_bar"> = {
+export const RECIPE_BAR_TYPE: Record<ForgerRecipe, "iron_bar" | "copper_bar" | "steel_bar"> = {
   dagger: "iron_bar",
   armour: "iron_bar",
   wand: "copper_bar",
   magic_powder: "copper_bar",
+  sword: "steel_bar",
 };
 
-export const FINISHED_GOODS: FinishedGood[] = ["dagger", "armour", "wand", "magic_powder"];
+export const FINISHED_GOODS: FinishedGood[] = ["dagger", "armour", "wand", "magic_powder", "sword"];
 
-export const ALL_ITEMS: ItemType[] = ["iron_ore", "copper_ore", "iron_bar", "copper_bar", "dagger", "armour", "wand", "magic_powder"];
+export const ALL_ITEMS: ItemType[] = ["iron_ore", "copper_ore", "coal", "iron_bar", "copper_bar", "steel_bar", "dagger", "armour", "wand", "magic_powder", "sword"];
 
 export const ITEM_CATEGORIES: Record<SorterFilter, ItemType[]> = {
-  ore: ["iron_ore", "copper_ore"],
-  bar: ["iron_bar", "copper_bar"],
-  finished: ["dagger", "armour", "wand", "magic_powder"],
+  ore: ["iron_ore", "copper_ore", "coal"],
+  bar: ["iron_bar", "copper_bar", "steel_bar"],
+  finished: ["dagger", "armour", "wand", "magic_powder", "sword"],
   all: ALL_ITEMS,
   iron_ore: ["iron_ore"],
   copper_ore: ["copper_ore"],
+  coal: ["coal"],
   iron_bar: ["iron_bar"],
   copper_bar: ["copper_bar"],
+  steel_bar: ["steel_bar"],
   dagger: ["dagger"],
   armour: ["armour"],
   wand: ["wand"],
   magic_powder: ["magic_powder"],
+  sword: ["sword"],
 };
 
 export const NPC_SPAWN_CHANCE = 0.15;
@@ -321,16 +337,18 @@ export const NPC_PATIENCE: Record<NpcType, [number, number]> = {
   noble: [25, 35],
   adventurer: [20, 30],
   king: [40, 60],
+  knight: [20, 30],
 };
 
-export const NPC_PRICE_MULTIPLIER: Record<NpcType, { iron: number; copper: number }> = {
-  warrior: { iron: 1.5, copper: 0.75 },
-  mage: { iron: 0.75, copper: 1.5 },
-  collector: { iron: 1.25, copper: 1.25 },
-  merchant: { iron: 1.0, copper: 1.0 },
-  noble: { iron: 1.75, copper: 1.0 },
-  adventurer: { iron: 1.0, copper: 1.75 },
-  king: { iron: 4.0, copper: 4.0 },
+export const NPC_PRICE_MULTIPLIER: Record<NpcType, { iron: number; copper: number; steel: number }> = {
+  warrior: { iron: 1.5, copper: 0.75, steel: 1.25 },
+  mage: { iron: 0.75, copper: 1.5, steel: 0.75 },
+  collector: { iron: 1.25, copper: 1.25, steel: 1.25 },
+  merchant: { iron: 1.0, copper: 1.0, steel: 1.0 },
+  noble: { iron: 1.75, copper: 1.0, steel: 1.5 },
+  adventurer: { iron: 1.0, copper: 1.75, steel: 1.0 },
+  king: { iron: 4.0, copper: 4.0, steel: 4.0 },
+  knight: { iron: 1.25, copper: 0.75, steel: 2.0 },
 };
 
 export const KING_SPAWN_CHANCE = 0.02;
@@ -395,6 +413,8 @@ export interface AutomationSettings {
   useHubRouting: boolean;
   priorityOreType: "iron" | "copper" | "balanced";
   reserveCurrency: number;
+  enableRestructuring: boolean;
+  lastRestructureTick: number;
 }
 
 export interface GameSave {

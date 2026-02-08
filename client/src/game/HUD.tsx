@@ -207,12 +207,15 @@ export default function HUD({
                     <optgroup label="Specific Items">
                       <option value="iron_ore">Iron Ore</option>
                       <option value="copper_ore">Copper Ore</option>
+                      <option value="coal">Coal</option>
                       <option value="iron_bar">Iron Bar</option>
                       <option value="copper_bar">Copper Bar</option>
+                      <option value="steel_bar">Steel Bar</option>
                       <option value="dagger">Dagger</option>
                       <option value="armour">Armour</option>
                       <option value="wand">Wand</option>
                       <option value="magic_powder">Magic Powder</option>
+                      <option value="sword">Sword</option>
                     </optgroup>
                   </select>
                 </label>
@@ -228,18 +231,20 @@ export default function HUD({
         <div className="inventory icon-grid">
           {(() => {
             const shops = state.buildings.filter(b => b.type === "shop");
-            const stock = { dagger: 0, armour: 0, wand: 0, magic_powder: 0 };
+            const stock = { dagger: 0, armour: 0, wand: 0, magic_powder: 0, sword: 0 };
             for (const shop of shops) {
-              stock.dagger += shop.storage.dagger;
-              stock.armour += shop.storage.armour;
-              stock.wand += shop.storage.wand;
-              stock.magic_powder += shop.storage.magic_powder;
+              stock.dagger += shop.storage.dagger ?? 0;
+              stock.armour += shop.storage.armour ?? 0;
+              stock.wand += shop.storage.wand ?? 0;
+              stock.magic_powder += shop.storage.magic_powder ?? 0;
+              stock.sword += shop.storage.sword ?? 0;
             }
             const items: Array<{key: string; count: number; label: string}> = [
               { key: "dagger", count: stock.dagger, label: "Dagger" },
               { key: "armour", count: stock.armour, label: "Armour" },
               { key: "wand", count: stock.wand, label: "Wand" },
               { key: "magic_powder", count: stock.magic_powder, label: "Magic Powder" },
+              { key: "sword", count: stock.sword, label: "Sword" },
             ];
             return items.map(item => (
               <div key={item.key} className="stock-item" title={item.label}>
@@ -824,6 +829,18 @@ export default function HUD({
               disabled={!localAutomation.enabled}
             />
             Use Hub Routing
+          </label>
+        </div>
+
+        <div className="auto-toggle">
+          <label>
+            <input
+              type="checkbox"
+              checked={localAutomation.enableRestructuring ?? false}
+              onChange={() => toggle("enableRestructuring")}
+              disabled={!localAutomation.enabled}
+            />
+            Auto-Restructure
           </label>
         </div>
 

@@ -161,6 +161,30 @@ const ICONS: Record<string, string> = {
       <circle cx="17" cy="19" r="1.2" fill="#70e8e8"/>
     </svg>
   `)}`,
+  ore_coal: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect x="1" y="1" width="30" height="30" rx="3" fill="#1a1a1a"/>
+      <ellipse cx="16" cy="20" rx="12" ry="8" fill="#0a0a0a"/>
+      <polygon points="10,22 8,16 12,12 18,14 16,20" fill="#2a2a2a"/>
+      <polygon points="10,22 8,16 12,12 18,14 16,20" fill="#3a3a3a" transform="translate(1,-1)"/>
+      <polygon points="18,18 20,12 26,14 24,20 20,22" fill="#333333"/>
+      <polygon points="18,18 20,12 26,14 24,20 20,22" fill="#444444" transform="translate(1,-1)"/>
+      <polygon points="12,14 14,8 20,10 18,16" fill="#252525"/>
+      <polygon points="12,14 14,8 20,10 18,16" fill="#383838" transform="translate(1,-1)"/>
+      <circle cx="11" cy="15" r="1.5" fill="#555555"/>
+      <circle cx="21" cy="13" r="1" fill="#606060"/>
+      <circle cx="17" cy="19" r="1.2" fill="#4a4a4a"/>
+    </svg>
+  `)}`,
+  miner_coal: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect x="2" y="2" width="28" height="28" rx="4" fill="#1a1a1a"/>
+      <path d="M8 24 L16 8 L18 10 L12 24 Z" fill="#8b8b8b"/>
+      <path d="M16 8 L24 12 L22 14 L18 10 Z" fill="#a0a0a0"/>
+      <circle cx="24" cy="12" r="3" fill="#333333"/>
+      <circle cx="24" cy="12" r="1.5" fill="#555555"/>
+    </svg>
+  `)}`,
   // NPC icons
   npc_warrior: `data:image/svg+xml,${encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -253,6 +277,20 @@ const ICONS: Record<string, string> = {
       <path d="M6 24 L26 24 L24 28 L8 28 Z" fill="#8b0000"/>
     </svg>
   `)}`,
+  npc_knight: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="14" fill="#607080"/>
+      <circle cx="16" cy="18" r="10" fill="#ffddbb"/>
+      <path d="M6 10 L16 2 L26 10 L24 14 L16 8 L8 14 Z" fill="#707880"/>
+      <rect x="14" y="4" width="4" height="6" fill="#888890"/>
+      <path d="M10 12 L22 12 L20 16 L12 16 Z" fill="#606870"/>
+      <circle cx="12" cy="18" r="2" fill="#222"/>
+      <circle cx="20" cy="18" r="2" fill="#222"/>
+      <path d="M12 23 Q16 26 20 23" stroke="#833" fill="none" stroke-width="2"/>
+      <rect x="24" y="12" width="3" height="10" fill="#666"/>
+      <rect x="23" y="10" width="5" height="3" fill="#888"/>
+    </svg>
+  `)}`,
   // Item icons
   item_iron_ore: `data:image/svg+xml,${encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -274,6 +312,16 @@ const ICONS: Record<string, string> = {
       <circle cx="16" cy="18" r="1.5" fill="#50d0d0"/>
     </svg>
   `)}`,
+  item_coal: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <ellipse cx="16" cy="16" rx="14" ry="12" fill="#1a1a1a"/>
+      <polygon points="8,18 10,10 16,8 20,12 18,20 10,20" fill="#2a2a2a"/>
+      <polygon points="14,14 18,10 24,14 22,20 16,18" fill="#3a3a3a"/>
+      <circle cx="12" cy="14" r="2" fill="#505050"/>
+      <circle cx="20" cy="12" r="1.5" fill="#606060"/>
+      <circle cx="16" cy="18" r="1.5" fill="#454545"/>
+    </svg>
+  `)}`,
   item_iron_bar: `data:image/svg+xml,${encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
       <rect x="4" y="10" width="24" height="12" rx="2" fill="#606060"/>
@@ -290,6 +338,15 @@ const ICONS: Record<string, string> = {
       <rect x="6" y="12" width="8" height="2" fill="#f0a060"/>
       <rect x="18" y="12" width="6" height="2" fill="#f0a060"/>
       <rect x="4" y="20" width="24" height="2" rx="1" fill="#8b5a2b"/>
+    </svg>
+  `)}`,
+  item_steel_bar: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect x="4" y="10" width="24" height="12" rx="2" fill="#4a5568"/>
+      <rect x="4" y="10" width="24" height="4" rx="1" fill="#6a7588"/>
+      <rect x="6" y="12" width="8" height="2" fill="#8090a0"/>
+      <rect x="18" y="12" width="6" height="2" fill="#8090a0"/>
+      <rect x="4" y="20" width="24" height="2" rx="1" fill="#3a4558"/>
     </svg>
   `)}`,
   item_dagger: `data:image/svg+xml,${encodeURIComponent(`
@@ -337,6 +394,16 @@ const ICONS: Record<string, string> = {
       <circle cx="20" cy="14" r="0.7" fill="#aaffff"/>
     </svg>
   `)}`,
+  item_sword: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <path d="M15 4 L17 4 L18 22 L14 22 Z" fill="#6a7588"/>
+      <path d="M15 4 L17 4 L17 20 L15 20 Z" fill="#8090a0"/>
+      <path d="M15 2 L17 2 L17 4 L15 4 Z" fill="#a0b0c0"/>
+      <path d="M10 22 L22 22 L20 24 L12 24 Z" fill="#c9a227"/>
+      <rect x="14" y="24" width="4" height="4" fill="#8b6914"/>
+      <path d="M13 28 L19 28 L18 30 L14 30 Z" fill="#654321"/>
+    </svg>
+  `)}`,
 };
 
 // Preload images
@@ -358,6 +425,7 @@ const COLORS: Record<string, string> = {
   grid: "#2a2a4e",
   ore_iron: "#e07020",
   ore_copper: "#40b0b0",
+  ore_coal: "#333333",
   miner: "#4080d0",
   smelter: "#d04040",
   forger: "#40b040",
@@ -378,6 +446,7 @@ const COLORS: Record<string, string> = {
   npc_noble: "#8b4513",
   npc_adventurer: "#2e8b57",
   npc_king: "#ffd700",
+  npc_knight: "#607080",
 };
 
 export function render(
@@ -663,12 +732,15 @@ function drawBeltItems(
   const itemColors: Record<string, string> = {
     iron_ore: "#e07020",
     copper_ore: "#40b0b0",
+    coal: "#333333",
     iron_bar: "#808080",
     copper_bar: "#b87333",
+    steel_bar: "#4a5568",
     dagger: "#a0a0a0",
     armour: "#707070",
     wand: "#9040c0",
     magic_powder: "#8040c0",
+    sword: "#718096",
   };
 
   for (const item of belt.itemsInTransit) {
@@ -725,14 +797,14 @@ function drawOreNode(
   const y = node.position.y * cellSize + pad;
   const size = cellSize - pad * 2;
 
-  const iconKey = node.type === "copper" ? "ore_copper" : "ore_iron";
+  const iconKey = node.type === "copper" ? "ore_copper" : node.type === "coal" ? "ore_coal" : "ore_iron";
   const img = iconImages[iconKey];
 
   if (img && img.complete) {
     ctx.drawImage(img, x, y, size, size);
   } else {
     // Fallback to colored square
-    ctx.fillStyle = node.type === "copper" ? COLORS.ore_copper : COLORS.ore_iron;
+    ctx.fillStyle = node.type === "copper" ? COLORS.ore_copper : node.type === "coal" ? COLORS.ore_coal : COLORS.ore_iron;
     ctx.fillRect(x, y, size, size);
   }
 }
@@ -754,7 +826,7 @@ function drawBuilding(
     const oreNode = oreNodes.find(
       (n) => n.position.x === building.position.x && n.position.y === building.position.y
     );
-    iconKey = oreNode?.type === "copper" ? "miner_copper" : "miner_iron";
+    iconKey = oreNode?.type === "copper" ? "miner_copper" : oreNode?.type === "coal" ? "miner_coal" : "miner_iron";
   } else {
     iconKey = building.type;
   }
@@ -830,7 +902,7 @@ function drawBuilding(
 
   // Recipe indicator for forgers (small badge in corner)
   if (building.type === "forger") {
-    const recipeLabels: Record<string, string> = { dagger: "D", armour: "A", wand: "W", magic_powder: "P" };
+    const recipeLabels: Record<string, string> = { dagger: "D", armour: "A", wand: "W", magic_powder: "P", sword: "S" };
     const label = recipeLabels[building.recipe] ?? "?";
     const badgeSize = Math.floor(cellSize * 0.3);
     ctx.fillStyle = "rgba(0,0,0,0.7)";
@@ -849,13 +921,13 @@ function drawBuilding(
     const filter = building.sorterFilter ?? "all";
     const filterLabels: Record<string, string> = {
       all: "*", ore: "O", bar: "B", finished: "F",
-      iron_ore: "io", copper_ore: "co", iron_bar: "ib", copper_bar: "cb",
-      dagger: "D", armour: "A", wand: "W", magic_powder: "P"
+      iron_ore: "io", copper_ore: "co", coal: "cl", iron_bar: "ib", copper_bar: "cb", steel_bar: "sb",
+      dagger: "D", armour: "A", wand: "W", magic_powder: "P", sword: "S"
     };
     const filterColors: Record<string, string> = {
       all: "#80c080", ore: "#e07020", bar: "#808080", finished: "#c080c0",
-      iron_ore: "#e07020", copper_ore: "#40b0b0", iron_bar: "#808080", copper_bar: "#b87333",
-      dagger: "#a0a0a0", armour: "#707070", wand: "#9040c0", magic_powder: "#8040c0"
+      iron_ore: "#e07020", copper_ore: "#40b0b0", coal: "#333333", iron_bar: "#808080", copper_bar: "#b87333", steel_bar: "#4a5568",
+      dagger: "#a0a0a0", armour: "#707070", wand: "#9040c0", magic_powder: "#8040c0", sword: "#718096"
     };
     const label = filterLabels[filter] ?? "?";
     const color = filterColors[filter] ?? "#888";
@@ -905,10 +977,10 @@ function drawBuilding(
       } else {
         // Fallback colored circle
         const colors: Record<string, string> = {
-          iron_ore: "#e07020", copper_ore: "#40b0b0",
-          iron_bar: "#808080", copper_bar: "#b87333",
+          iron_ore: "#e07020", copper_ore: "#40b0b0", coal: "#333333",
+          iron_bar: "#808080", copper_bar: "#b87333", steel_bar: "#4a5568",
           dagger: "#a0a0a0", armour: "#707070",
-          wand: "#9040c0", magic_powder: "#8040c0",
+          wand: "#9040c0", magic_powder: "#8040c0", sword: "#718096",
         };
         ctx.fillStyle = colors[itemType] || "#888";
         ctx.beginPath();

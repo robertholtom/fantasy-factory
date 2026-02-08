@@ -10,6 +10,9 @@ import {
   MINER_TICKS,
   SMELT_TICKS,
   SMELT_ORE_COST,
+  SMELT_STEEL_IRON_COST,
+  SMELT_STEEL_COAL_COST,
+  SMELT_STEEL_TICKS,
   RECIPE_BARS_COST,
   RECIPE_TICKS,
   RECIPE_BAR_TYPE,
@@ -45,7 +48,7 @@ import {
   GameMeta,
 } from "./types";
 import { getModifiers } from "./modifiers";
-import { runAutomation } from "./automation";
+import { runAutomation, evaluateAndRestructure } from "./automation";
 
 function findBuildingAt(buildings: Building[], x: number, y: number): Building | undefined {
   return buildings.find((b) => b.position.x === x && b.position.y === y);
@@ -95,7 +98,7 @@ export function tick(
         const ticksNeeded = MINER_TICKS[oreNode.type] / (modifiers.miningSpeed * upgradeBonus);
         building.progress += 1 / ticksNeeded;
         if (building.progress >= 1 - EPSILON) {
-          const oreItem: ItemType = oreNode.type === "iron" ? "iron_ore" : "copper_ore";
+          const oreItem: ItemType = oreNode.type === "iron" ? "iron_ore" : oreNode.type === "copper" ? "copper_ore" : "coal";
           building.storage[oreItem] += 1;
           building.progress = 0;
           itemsProducedThisTick++;
@@ -103,7 +106,20 @@ export function tick(
       }
     } else if (building.type === "smelter") {
       const upgradeBonus = getUpgradeMultiplier(building.upgradeLevel ?? 0);
-      if (building.storage.iron_ore >= SMELT_ORE_COST) {
+      // Steel production: prioritize if we have both iron_ore and coal
+      const coalCount = building.storage.coal ?? 0;
+      const steelBarCount = building.storage.steel_bar ?? 0;
+      if (building.storage.iron_ore >= SMELT_STEEL_IRON_COST && coalCount >= SMELT_STEEL_COAL_COST) {
+        const ticksNeeded = SMELT_STEEL_TICKS / (modifiers.smeltingSpeed * upgradeBonus);
+        building.progress += 1 / ticksNeeded;
+        if (building.progress >= 1 - EPSILON) {
+          building.storage.iron_ore -= SMELT_STEEL_IRON_COST;
+          building.storage.coal = coalCount - SMELT_STEEL_COAL_COST;
+          building.storage.steel_bar = steelBarCount + 1;
+          building.progress = 0;
+          itemsProducedThisTick++;
+        }
+      } else if (building.storage.iron_ore >= SMELT_ORE_COST) {
         const ticksNeeded = SMELT_TICKS.iron / (modifiers.smeltingSpeed * upgradeBonus);
         building.progress += 1 / ticksNeeded;
         if (building.progress >= 1 - EPSILON) {
@@ -127,11 +143,13 @@ export function tick(
       const barsCost = RECIPE_BARS_COST[building.recipe];
       const forgeTicks = RECIPE_TICKS[building.recipe] / (modifiers.forgingSpeed * upgradeBonus);
       const barType = RECIPE_BAR_TYPE[building.recipe];
-      if (building.storage[barType] >= barsCost) {
+      const currentBars = building.storage[barType] ?? 0;
+      const currentProduct = building.storage[building.recipe] ?? 0;
+      if (currentBars >= barsCost) {
         building.progress += 1 / forgeTicks;
         if (building.progress >= 1 - EPSILON) {
-          building.storage[barType] -= barsCost;
-          building.storage[building.recipe] += 1;
+          building.storage[barType] = currentBars - barsCost;
+          building.storage[building.recipe] = currentProduct + 1;
           building.progress = 0;
           itemsProducedThisTick++;
         }
@@ -163,7 +181,7 @@ export function tick(
       if (item.cellIndex === undefined) item.cellIndex = 0;
       item.cellIndex += cellsPerTick;
       if (item.cellIndex >= internalCells) {
-        dst.storage[item.itemType] += 1;
+        dst.storage[item.itemType] = (dst.storage[item.itemType] ?? 0) + 1;
         return false;
       }
       return true;
@@ -172,8 +190,8 @@ export function tick(
     const maxItemsOnBelt = Math.max(1, internalCells);
     if (belt.itemsInTransit.length < maxItemsOnBelt) {
       const transferable = getTransferableItem(src, dst);
-      if (transferable && src.storage[transferable] > 0) {
-        src.storage[transferable] -= 1;
+      if (transferable && (src.storage[transferable] ?? 0) > 0) {
+        src.storage[transferable] = (src.storage[transferable] ?? 0) - 1;
         belt.itemsInTransit.push({ itemType: transferable, cellIndex: 0 });
       }
     }
@@ -219,9 +237,11 @@ export function tick(
       if (building.storage[npc.wantedItem] > 0) {
         building.storage[npc.wantedItem] -= 1;
         const basePrice = SELL_PRICES[npc.wantedItem];
-        const isIronItem = RECIPE_BAR_TYPE[npc.wantedItem] === "iron_bar";
-        const mult = isIronItem
+        const barType = RECIPE_BAR_TYPE[npc.wantedItem];
+        const mult = barType === "iron_bar"
           ? NPC_PRICE_MULTIPLIER[npc.npcType].iron
+          : barType === "steel_bar"
+          ? NPC_PRICE_MULTIPLIER[npc.npcType].steel
           : NPC_PRICE_MULTIPLIER[npc.npcType].copper;
         const earned = Math.round(basePrice * mult * modifiers.sellPrice);
         state.currency += earned;
@@ -306,7 +326,8 @@ export function tick(
             if (x >= 0 && x < state.mapWidth && y >= 0 && y < state.mapHeight) {
               const key = `${x},${y}`;
               if (!occupiedPositions.has(key)) {
-                const oreType = Math.random() < 0.5 ? "iron" : "copper";
+                const roll = Math.random();
+                const oreType = roll < 0.3 ? "coal" : roll < 0.65 ? "iron" : "copper";
                 state.oreNodes.push({
                   id: `ore-discovered-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                   position: { x, y },
@@ -331,6 +352,7 @@ export function tick(
   // 6. Automation
   if (automation.enabled) {
     runAutomation(state, upgrades, automation);
+    evaluateAndRestructure(state, automation);
   }
 
   return { currencyEarned: currencyEarnedThisTick, itemsProduced: itemsProducedThisTick };
@@ -340,25 +362,26 @@ function getTransferableItem(src: Building, dst: Building): ItemType | null {
   if (dst.type === "smelter") {
     if (src.storage.iron_ore > 0) return "iron_ore";
     if (src.storage.copper_ore > 0) return "copper_ore";
+    if ((src.storage.coal ?? 0) > 0) return "coal";
     return null;
   }
 
   if (dst.type === "forger") {
     const neededBar = RECIPE_BAR_TYPE[dst.recipe];
-    if (src.storage[neededBar] > 0) return neededBar;
+    if ((src.storage[neededBar] ?? 0) > 0) return neededBar;
     return null;
   }
 
   if (dst.type === "shop" || dst.type === "warehouse") {
     for (const item of FINISHED_GOODS) {
-      if (src.storage[item] > 0) return item;
+      if ((src.storage[item] ?? 0) > 0) return item;
     }
     return null;
   }
 
   if (dst.type === "junction") {
     for (const item of ALL_ITEMS) {
-      if (src.storage[item] > 0) return item;
+      if ((src.storage[item] ?? 0) > 0) return item;
     }
     return null;
   }
@@ -366,14 +389,14 @@ function getTransferableItem(src: Building, dst: Building): ItemType | null {
   if (dst.type === "sorter") {
     const allowed = ITEM_CATEGORIES[dst.sorterFilter ?? "all"];
     for (const item of allowed) {
-      if (src.storage[item] > 0) return item;
+      if ((src.storage[item] ?? 0) > 0) return item;
     }
     return null;
   }
 
-  const items: ItemType[] = ["iron_ore", "iron_bar", "dagger", "armour", "copper_ore", "copper_bar", "wand", "magic_powder"];
+  const items: ItemType[] = ["iron_ore", "iron_bar", "dagger", "armour", "copper_ore", "copper_bar", "wand", "magic_powder", "coal", "steel_bar", "sword"];
   for (const item of items) {
-    if (src.storage[item] > 0) return item;
+    if ((src.storage[item] ?? 0) > 0) return item;
   }
   return null;
 }
@@ -399,7 +422,7 @@ function pickRandomExplorerTarget(state: GameState): Position {
 }
 
 function randomNpcType(): NpcType {
-  const types: NpcType[] = ["warrior", "mage", "collector", "merchant"];
+  const types: NpcType[] = ["warrior", "mage", "collector", "merchant", "knight"];
   return types[Math.floor(Math.random() * types.length)];
 }
 

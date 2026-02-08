@@ -72,6 +72,18 @@ export const NPC_ICONS: Record<string, string> = {
       <path d="M26 18 L24 28 L26 28 Z" fill="#800000"/>
     </svg>
   `)}`,
+  knight: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <circle cx="16" cy="12" r="6" fill="#607080"/>
+      <path d="M10 18 L22 18 L24 28 L8 28 Z" fill="#505860"/>
+      <path d="M8 6 L16 2 L24 6 L22 10 L16 6 L10 10 Z" fill="#707880"/>
+      <rect x="14" y="4" width="4" height="4" fill="#888890"/>
+      <circle cx="14" cy="11" r="1" fill="#fff"/>
+      <circle cx="18" cy="11" r="1" fill="#fff"/>
+      <rect x="22" y="10" width="4" height="10" fill="#666"/>
+      <rect x="21" y="8" width="6" height="3" fill="#888"/>
+    </svg>
+  `)}`,
 };
 
 // Item icons as data URLs
@@ -119,6 +131,16 @@ export const ITEM_ICONS: Record<string, string> = {
       <circle cx="18" cy="17" r="1" fill="#c0c0ff"/>
       <circle cx="12" cy="14" r="0.6" fill="#ffaaff"/>
       <circle cx="20" cy="14" r="0.7" fill="#aaffff"/>
+    </svg>
+  `)}`,
+  sword: `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <path d="M15 4 L17 4 L18 22 L14 22 Z" fill="#6a7588"/>
+      <path d="M15 4 L17 4 L17 20 L15 20 Z" fill="#8090a0"/>
+      <path d="M15 2 L17 2 L17 4 L15 4 Z" fill="#a0b0c0"/>
+      <path d="M10 22 L22 22 L20 24 L12 24 Z" fill="#c9a227"/>
+      <rect x="14" y="24" width="4" height="4" fill="#8b6914"/>
+      <path d="M13 28 L19 28 L18 30 L14 30 Z" fill="#654321"/>
     </svg>
   `)}`,
 };

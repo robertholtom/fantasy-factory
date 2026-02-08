@@ -21,7 +21,7 @@ import { createDefaultPrestige, createDefaultUpgrades, createDefaultAutomation, 
 import { applySmartDefaults } from "./automation";
 
 function emptyInventory(): Inventory {
-  return { iron_ore: 0, iron_bar: 0, dagger: 0, armour: 0, copper_ore: 0, copper_bar: 0, wand: 0, magic_powder: 0 };
+  return { iron_ore: 0, iron_bar: 0, dagger: 0, armour: 0, copper_ore: 0, copper_bar: 0, wand: 0, magic_powder: 0, coal: 0, steel_bar: 0, sword: 0 };
 }
 
 function inBounds(pos: Position, state: GameState): boolean {

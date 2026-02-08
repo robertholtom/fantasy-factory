@@ -229,30 +229,42 @@ export default function GameCanvas({
     }
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
+  // Use ref to track view for wheel handler
+  const viewRef = useRef(view);
+  viewRef.current = view;
+
+  // Add non-passive wheel listener to allow preventDefault
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
 
-    // Zoom in/out
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    const newZoom = Math.max(0.5, Math.min(3, view.zoom * zoomFactor));
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-    // Adjust pan to zoom towards mouse position
-    const zoomRatio = newZoom / view.zoom;
-    const newPanX = mouseX - (mouseX - view.panX) * zoomRatio;
-    const newPanY = mouseY - (mouseY - view.panY) * zoomRatio;
+      // Zoom in/out
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      const currentView = viewRef.current;
+      const newZoom = Math.max(0.5, Math.min(3, currentView.zoom * zoomFactor));
 
-    setView({
-      zoom: newZoom,
-      panX: newPanX,
-      panY: newPanY,
-    });
-  };
+      // Adjust pan to zoom towards mouse position
+      const zoomRatio = newZoom / currentView.zoom;
+      const newPanX = mouseX - (mouseX - currentView.panX) * zoomRatio;
+      const newPanY = mouseY - (mouseY - currentView.panY) * zoomRatio;
+
+      setView({
+        zoom: newZoom,
+        panX: newPanX,
+        panY: newPanY,
+      });
+    };
+
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", handleWheel);
+  }, []);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent context menu when right-click panning
@@ -266,7 +278,6 @@ export default function GameCanvas({
       className="game-canvas"
       onClick={handleClick}
       onMouseMove={handleMouseMove}
-      onWheel={handleWheel}
       onContextMenu={handleContextMenu}
       style={{ cursor: cursorStyle }}
     />
